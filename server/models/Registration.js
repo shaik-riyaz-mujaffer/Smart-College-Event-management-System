@@ -36,6 +36,13 @@ const registrationSchema = new mongoose.Schema({
     attended: { type: Boolean, default: false },
     attendedAt: { type: Date },
 
+    // ── Snapshot of event details (saved when event is deleted) ──
+    eventSnapshot: {
+        title: { type: String },
+        date: { type: Date },
+        venue: { type: String }
+    },
+
     // ── Legacy fields (kept for backward compatibility) ──
     transactionId: { type: String },
     upiQrCode: { type: String },

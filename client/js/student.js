@@ -349,6 +349,9 @@ function buildEventCard(event, isPast) {
         '<span><i class="bi bi-calendar3"></i> ' + day + ' ' + month + ', ' + timeStr + '</span>' +
         '<span><i class="bi bi-geo-alt-fill"></i> ' + event.venue + '</span>' +
         '</div>' +
+        (event.createdBy && event.createdBy.name
+            ? '<div class="small text-muted mb-2" style="font-size:.78rem;"><i class="bi bi-person-fill me-1"></i>Posted by: <strong>' + event.createdBy.name + '</strong></div>'
+            : '') +
         '<p class="student-event-desc">' + (event.description || '').substring(0, 100) +
         (event.description && event.description.length > 100 ? '...' : '') + '</p>' +
         feeInfoLine +
@@ -365,19 +368,27 @@ function buildEventCard(event, isPast) {
 // ═══════════════════════════════════════════
 function renderRegistrations() {
     var regsList = document.getElementById('regsList');
-    var badge = document.getElementById('regCountBadge');
+    var now = new Date();
 
-    // Filter out registrations whose event was deleted (null)
-    var validRegs = [];
+    // Split into active (upcoming event) and inactive (deleted or past event)
+    var activeRegs = [];
+    var inactiveRegs = [];
     for (var i = 0; i < myRegistrations.length; i++) {
-        if (myRegistrations[i].event) {
-            validRegs.push(myRegistrations[i]);
+        var r = myRegistrations[i];
+        if (!r.event) {
+            // Event was deleted
+            r._inactiveReason = 'deleted';
+            inactiveRegs.push(r);
+        } else if (new Date(r.event.date) < now) {
+            // Event date has passed
+            r._inactiveReason = r.attended ? 'attended' : 'expired';
+            inactiveRegs.push(r);
+        } else {
+            activeRegs.push(r);
         }
     }
 
-    badge.textContent = validRegs.length + ' Registration' + (validRegs.length !== 1 ? 's' : '');
-
-    if (validRegs.length === 0) {
+    if (myRegistrations.length === 0) {
         regsList.innerHTML = '<div class="col-12">' +
             '<div class="text-center py-5">' +
             '<i class="bi bi-ticket-perforated" style="font-size:3rem;opacity:.2;color:var(--primary);"></i>' +
@@ -388,54 +399,125 @@ function renderRegistrations() {
     }
 
     var html = '';
-    for (var i = 0; i < validRegs.length; i++) {
-        var reg = validRegs[i];
-        var event = reg.event;
 
-        var statusBadge = '', paymentInfo = '', qrSection = '';
-        var dateStr = new Date(event.date).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
-        var regDate = new Date(reg.createdAt).toLocaleDateString();
+    // ── Active Registrations Section ──
+    if (activeRegs.length > 0) {
+        html += '<div class="col-12 mb-3">' +
+            '<div class="d-flex align-items-center gap-2">' +
+            '<h6 class="mb-0 fw-bold"><i class="bi bi-check-circle-fill text-success me-1"></i>Active Registrations</h6>' +
+            '<span class="badge bg-success rounded-pill">' + activeRegs.length + '</span>' +
+            '</div><hr class="mt-2 mb-0"></div>';
 
-        if (reg.paymentStatus === 'free' || reg.paymentStatus === 'paid') {
-            statusBadge = '<span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Confirmed</span>';
-            qrSection = '<div class="student-qr-block">' +
-                '<p class="small text-muted mb-2"><i class="bi bi-qr-code-scan me-1"></i> Attendance QR</p>' +
-                '<img src="' + reg.qrCode + '" class="img-fluid rounded mb-2" style="max-width:160px;" alt="QR">' +
-                '<p class="small fw-bold mb-0" style="font-family:monospace;color:var(--primary);">' + reg._id + '</p>' +
-                '<div class="alert alert-info py-1 px-3 mt-2 mb-0" style="font-size:.72rem;border-radius:8px;">' +
-                '<i class="bi bi-info-circle me-1"></i> Show this QR at the gate for entry (one-time scan only)</div></div>';
-        } else if (reg.paymentStatus === 'awaiting_approval') {
-            statusBadge = '<span class="badge" style="background:linear-gradient(135deg,#f59e0b,#ef4444);color:#fff;"><i class="bi bi-hourglass-split me-1"></i>Awaiting Approval</span>';
-            paymentInfo = '<div class="alert alert-warning py-2 mt-3 mb-0 small" style="border-radius:8px;">' +
-                '<i class="bi bi-clock-history me-1"></i> Your payment has been submitted. ' +
-                'The admin will verify your transaction ID and approve your registration. ' +
-                'You will receive a confirmation email with your QR ticket once approved.</div>';
-        } else if (reg.paymentStatus === 'pending') {
-            statusBadge = '<span class="badge bg-warning text-dark"><i class="bi bi-hourglass-split me-1"></i>Pending</span>';
-            paymentInfo = '<div class="alert alert-warning py-2 mt-3 mb-0 small" style="border-radius:8px;">' +
-                '<i class="bi bi-exclamation-triangle me-1"></i> Payment pending. ' +
-                '<button class="btn btn-link btn-sm p-0 fw-semibold" data-action="retry-payment" data-event-id="' +
-                event._id + '" data-fee="' + event.registrationFee + '">Complete Payment</button></div>';
-        } else if (reg.paymentStatus === 'failed') {
-            statusBadge = '<span class="badge bg-danger"><i class="bi bi-x-circle me-1"></i>Failed</span>';
-            paymentInfo = '<div class="alert alert-danger py-2 mt-3 mb-0 small" style="border-radius:8px;">' +
-                '<i class="bi bi-x-circle me-1"></i> Payment failed. ' +
-                '<button class="btn btn-link btn-sm p-0 fw-semibold" data-action="retry-payment" data-event-id="' +
-                event._id + '" data-fee="' + event.registrationFee + '">Try Again</button></div>';
+        for (var i = 0; i < activeRegs.length; i++) {
+            var reg = activeRegs[i];
+            var event = reg.event;
+            var statusBadge = '', paymentInfo = '', qrSection = '';
+            var dateStr = new Date(event.date).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+            var regDate = new Date(reg.createdAt).toLocaleDateString();
+
+            if (reg.paymentStatus === 'free' || reg.paymentStatus === 'paid') {
+                statusBadge = '<span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Confirmed</span>';
+                qrSection = '<div class="student-qr-block">' +
+                    '<p class="small text-muted mb-2"><i class="bi bi-qr-code-scan me-1"></i> Attendance QR</p>' +
+                    '<img src="' + reg.qrCode + '" class="img-fluid rounded mb-2" style="max-width:160px;" alt="QR">' +
+                    '<p class="small fw-bold mb-0" style="font-family:monospace;color:var(--primary);">' + reg._id + '</p>' +
+                    '<div class="alert alert-info py-1 px-3 mt-2 mb-0" style="font-size:.72rem;border-radius:8px;">' +
+                    '<i class="bi bi-info-circle me-1"></i> Show this QR at the gate for entry (one-time scan only)</div></div>';
+            } else if (reg.paymentStatus === 'awaiting_approval') {
+                statusBadge = '<span class="badge" style="background:linear-gradient(135deg,#f59e0b,#ef4444);color:#fff;"><i class="bi bi-hourglass-split me-1"></i>Awaiting Approval</span>';
+                paymentInfo = '<div class="alert alert-warning py-2 mt-3 mb-0 small" style="border-radius:8px;">' +
+                    '<i class="bi bi-clock-history me-1"></i> Your payment has been submitted. ' +
+                    'The admin will verify your transaction ID and approve your registration. ' +
+                    'You will receive a confirmation email with your QR ticket once approved.</div>';
+            } else if (reg.paymentStatus === 'pending') {
+                statusBadge = '<span class="badge bg-warning text-dark"><i class="bi bi-hourglass-split me-1"></i>Pending</span>';
+                paymentInfo = '<div class="alert alert-warning py-2 mt-3 mb-0 small" style="border-radius:8px;">' +
+                    '<i class="bi bi-exclamation-triangle me-1"></i> Payment pending. ' +
+                    '<button class="btn btn-link btn-sm p-0 fw-semibold" data-action="retry-payment" data-event-id="' +
+                    event._id + '" data-fee="' + event.registrationFee + '">Complete Payment</button></div>';
+            } else if (reg.paymentStatus === 'failed') {
+                statusBadge = '<span class="badge bg-danger"><i class="bi bi-x-circle me-1"></i>Failed</span>';
+                paymentInfo = '<div class="alert alert-danger py-2 mt-3 mb-0 small" style="border-radius:8px;">' +
+                    '<i class="bi bi-x-circle me-1"></i> Payment failed. ' +
+                    '<button class="btn btn-link btn-sm p-0 fw-semibold" data-action="retry-payment" data-event-id="' +
+                    event._id + '" data-fee="' + event.registrationFee + '">Try Again</button></div>';
+            }
+
+            html += '<div class="col-md-6 mb-4">' +
+                '<div class="student-reg-card">' +
+                '<div class="d-flex justify-content-between align-items-start mb-2">' +
+                '<div><h5 class="mb-1 fw-bold">' + event.title + '</h5>' +
+                '<p class="text-muted small mb-0"><i class="bi bi-calendar3 me-1"></i>' + dateStr + '</p></div>' +
+                statusBadge + '</div>' +
+                '<p class="small text-muted mb-1"><i class="bi bi-geo-alt me-1"></i> ' + event.venue + '</p>' +
+                paymentInfo + qrSection +
+                '<div class="mt-3 pt-2 border-top d-flex justify-content-between align-items-center">' +
+                '<span class="small text-muted">Registered: ' + regDate + '</span>' +
+                '</div></div></div>';
         }
+    }
 
-        html += '<div class="col-md-6 mb-4">' +
-            '<div class="student-reg-card">' +
-            '<div class="d-flex justify-content-between align-items-start mb-2">' +
-            '<div><h5 class="mb-1 fw-bold">' + event.title + '</h5>' +
-            '<p class="text-muted small mb-0"><i class="bi bi-calendar3 me-1"></i>' + dateStr + '</p></div>' +
-            statusBadge + '</div>' +
-            '<p class="small text-muted mb-1"><i class="bi bi-geo-alt me-1"></i> ' + event.venue + '</p>' +
-            paymentInfo + qrSection +
-            '<div class="mt-3 pt-2 border-top d-flex justify-content-between align-items-center">' +
-            '<span class="small text-muted">Registered: ' + regDate + '</span>' +
-            (reg.attended ? '<span class="badge bg-info"><i class="bi bi-person-check me-1"></i>Attended</span>' : '') +
-            '</div></div></div>';
+    // ── Inactive Registrations Section ──
+    if (inactiveRegs.length > 0) {
+        html += '<div class="col-12 mb-3 ' + (activeRegs.length > 0 ? 'mt-2' : '') + '">' +
+            '<div class="d-flex align-items-center gap-2">' +
+            '<h6 class="mb-0 fw-bold"><i class="bi bi-archive-fill me-1" style="color:#64748b;"></i>Inactive Registrations</h6>' +
+            '<span class="badge rounded-pill" style="background:#64748b;">' + inactiveRegs.length + '</span>' +
+            '</div><hr class="mt-2 mb-0"></div>';
+
+        for (var j = 0; j < inactiveRegs.length; j++) {
+            var reg = inactiveRegs[j];
+            var regDate = new Date(reg.createdAt).toLocaleDateString();
+            var reason = reg._inactiveReason;
+
+            if (reason === 'deleted') {
+                // ── Deleted event card ──
+                var snap = reg.eventSnapshot || {};
+                var title = snap.title || 'Unknown Event';
+                var dateStr = snap.date ? new Date(snap.date).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : 'Date unavailable';
+                var venue = snap.venue || 'Venue unavailable';
+                var reasonBadge = '<span class="badge" style="background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff;font-size:.72rem;"><i class="bi bi-trash3-fill me-1"></i>Event Deleted by Admin</span>';
+                var borderColor = '#ef4444';
+                var alertHtml = '<div class="alert alert-danger py-2 mt-2 mb-0 small" style="border-radius:8px;">' +
+                    '<i class="bi bi-exclamation-triangle-fill me-1"></i> This event has been removed by the admin. ' +
+                    'Your registration is no longer active.</div>';
+                var titleStyle = 'text-decoration:line-through;';
+
+            } else {
+                // ── Past event card (attended or expired) ──
+                var event = reg.event;
+                var title = event.title;
+                var dateStr = new Date(event.date).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+                var venue = event.venue;
+                var titleStyle = '';
+
+                if (reason === 'attended') {
+                    var reasonBadge = '<span class="badge" style="background:linear-gradient(135deg,#0ea5e9,#6366f1);color:#fff;font-size:.72rem;"><i class="bi bi-person-check-fill me-1"></i>Attended</span>';
+                    var borderColor = '#0ea5e9';
+                    var alertHtml = '<div class="alert alert-info py-2 mt-2 mb-0 small" style="border-radius:8px;">' +
+                        '<i class="bi bi-check-circle-fill me-1"></i> You attended this event. Thank you for participating!</div>';
+                } else {
+                    var reasonBadge = '<span class="badge" style="background:linear-gradient(135deg,#94a3b8,#64748b);color:#fff;font-size:.72rem;"><i class="bi bi-clock-history me-1"></i>Expired</span>';
+                    var borderColor = '#94a3b8';
+                    var alertHtml = '<div class="alert alert-secondary py-2 mt-2 mb-0 small" style="border-radius:8px;">' +
+                        '<i class="bi bi-clock-history me-1"></i> This event has ended.</div>';
+                }
+            }
+
+            html += '<div class="col-md-6 mb-4">' +
+                '<div class="student-reg-card" style="border-left:4px solid ' + borderColor + ';opacity:.85;">' +
+                '<div class="d-flex justify-content-between align-items-start mb-2">' +
+                '<div><h5 class="mb-1 fw-bold text-muted" style="' + titleStyle + '">' + title + '</h5>' +
+                '<p class="text-muted small mb-0"><i class="bi bi-calendar3 me-1"></i>' + dateStr + '</p></div>' +
+                '<div class="d-flex flex-column align-items-end gap-1">' +
+                reasonBadge +
+                '</div></div>' +
+                '<p class="small text-muted mb-1"><i class="bi bi-geo-alt me-1"></i> ' + venue + '</p>' +
+                alertHtml +
+                '<div class="mt-3 pt-2 border-top">' +
+                '<span class="small text-muted">Registered: ' + regDate + '</span>' +
+                '</div></div></div>';
+        }
     }
 
     regsList.innerHTML = html;

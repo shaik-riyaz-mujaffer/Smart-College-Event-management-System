@@ -60,6 +60,7 @@ router.get('/student-view', verifyToken, async (req, res) => {
 
         const events = await Event.find()
             .populate('registrations')   // virtual count
+            .populate('createdBy', 'name')
             .sort({ date: 1 });
 
         // All registrations for THIS student (any status)
@@ -199,8 +200,11 @@ router.delete('/:id', verifyToken, isAdmin, async (req, res) => {
                 fs.unlinkSync(bannerPath);
             }
         }
-        // Delete all registrations for this event
-        await Registration.deleteMany({ event: req.params.id });
+        // Save event details snapshot to all registrations before deleting
+        await Registration.updateMany(
+            { event: req.params.id },
+            { $set: { eventSnapshot: { title: event.title, date: event.date, venue: event.venue } } }
+        );
 
         await Event.findByIdAndDelete(req.params.id);
         res.json({ message: 'Event deleted successfully.' });
