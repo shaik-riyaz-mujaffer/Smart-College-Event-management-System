@@ -101,7 +101,10 @@ async function refreshAll() {
 // ═══════════════════════════════════════════
 async function loadProfile() {
     try {
-        var res = await fetch(API + '/auth/profile', { headers: authHeaders() });
+        var res = await fetch(API + '/auth/profile', {
+            headers: authHeaders(),
+            cache: 'no-store'
+        });
         if (!res.ok) return;
         var user = await res.json();
 
@@ -260,7 +263,10 @@ function renderEvents() {
 // ═══════════════════════════════════════════
 async function loadMyRegistrations() {
     try {
-        var res = await fetch(API + '/registrations/my', { headers: authHeaders() });
+        var res = await fetch(API + '/registrations/my', {
+            headers: authHeaders(),
+            cache: 'no-store'  // prevent serving another user's cached registrations
+        });
         myRegistrations = await res.json();
         renderRegistrations();
         renderEvents(); // update button states
