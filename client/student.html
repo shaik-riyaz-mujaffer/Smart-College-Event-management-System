@@ -17,9 +17,9 @@
     <!-- Navbar -->
     <nav class="navbar navbar-expand-lg navbar-dark">
         <div class="container-fluid px-4">
-            <a class="navbar-brand" href="#">
+            <span class="navbar-brand" style="cursor:default;">
                 <i class="bi bi-calendar-event me-1"></i> CampusEvents
-            </a>
+            </span>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#studentNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
@@ -35,6 +35,12 @@
                         <button class="nav-link" id="regs-tab" data-bs-toggle="pill" data-bs-target="#regsPane"
                             type="button" role="tab">
                             <i class="bi bi-qr-code me-1"></i> My Registrations
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="past-tab" data-bs-toggle="pill" data-bs-target="#pastPane"
+                            type="button" role="tab">
+                            <i class="bi bi-clock-history me-1"></i> Past Events
                         </button>
                     </li>
                 </ul>
@@ -80,7 +86,7 @@
             <form id="studentProfileForm" autocomplete="off">
                 <div class="mb-3">
                     <label class="form-label fw-semibold">Full Name</label>
-                    <input type="text" class="form-control" id="profName" readonly style="background:#f8fafc;">
+                    <input type="text" class="form-control" id="profName">
                 </div>
                 <div class="mb-3">
                     <label class="form-label fw-semibold">Email</label>
@@ -91,7 +97,13 @@
                     <input type="text" class="form-control" id="profRegNo" readonly style="background:#f8fafc;">
                 </div>
                 <hr class="my-3">
-                <p class="text-muted small mb-3"><i class="bi bi-pencil me-1"></i>You can update the fields below</p>
+                <p class="text-muted small mb-3" id="profileEditHint"><i class="bi bi-pencil me-1"></i>You can update
+                    the fields below</p>
+                <div id="profileLockedAlert" class="alert alert-info py-2 px-3 mb-3 d-none"
+                    style="border-radius:10px;font-size:.82rem;">
+                    <i class="bi bi-lock-fill me-1"></i> Phone and Branch are locked after your registration. You can
+                    still update your Name, Year, and Section.
+                </div>
                 <div class="mb-3">
                     <label class="form-label fw-semibold">Phone Number</label>
                     <div class="input-icon-wrapper">
@@ -107,14 +119,12 @@
                             <option value="">Select</option>
                             <option value="CSE">CSE</option>
                             <option value="ECE">ECE</option>
+                            <option value="CSM">CSM</option>
+                            <option value="CSD">CSD</option>
+                            <option value="AIML">AI&ML</option>
                             <option value="EEE">EEE</option>
                             <option value="MECH">MECH</option>
                             <option value="CIVIL">CIVIL</option>
-                            <option value="IT">IT</option>
-                            <option value="AIDS">AI&DS</option>
-                            <option value="AIML">AI&ML</option>
-                            <option value="CSM">CSM</option>
-                            <option value="CSD">CSD</option>
                             <option value="MBA">MBA</option>
                             <option value="MCA">MCA</option>
                         </select>
@@ -177,6 +187,19 @@
                 </div>
                 <div class="row g-4" id="regsList">
                     <!-- Registrations loaded dynamically -->
+                </div>
+            </div>
+
+            <!-- Past Events Tab -->
+            <div class="tab-pane fade" id="pastPane" role="tabpanel">
+                <div class="d-flex align-items-center justify-content-between mb-4">
+                    <h4 class="mb-0 fw-bold">
+                        <i class="bi bi-clock-history text-primary me-2"></i>Past Events
+                    </h4>
+                    <span class="badge bg-secondary fs-6 px-3 py-2" id="pastCountBadge">0 Events</span>
+                </div>
+                <div class="row g-4" id="pastList">
+                    <!-- Past events loaded dynamically -->
                 </div>
             </div>
         </div>

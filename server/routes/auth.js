@@ -113,12 +113,23 @@ router.post('/login', async (req, res) => {
 
 const { verifyToken } = require('../middleware/auth');
 
+const Registration = require('../models/Registration');
+
 // GET /api/auth/profile
 router.get('/profile', verifyToken, async (req, res) => {
     try {
         const user = await User.findById(req.user._id).select('-password');
         if (!user) return res.status(404).json({ message: 'User not found.' });
-        res.json(user);
+
+        const userObj = user.toObject();
+
+        // For students, check if they have any registrations
+        if (user.role === 'student') {
+            const regCount = await Registration.countDocuments({ user: user._id });
+            userObj.hasRegistered = regCount > 0;
+        }
+
+        res.json(userObj);
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
@@ -127,7 +138,7 @@ router.get('/profile', verifyToken, async (req, res) => {
 // PUT /api/auth/profile
 router.put('/profile', verifyToken, async (req, res) => {
     try {
-        const { department, designation, teachingSubject, adminBranch, phdDetails, btechDetails,
+        const { name, department, designation, teachingSubject, adminBranch, phdDetails, btechDetails,
             phone, branch, year, section } = req.body;
         const user = await User.findById(req.user._id);
         if (!user) return res.status(404).json({ message: 'User not found.' });
@@ -140,11 +151,24 @@ router.put('/profile', verifyToken, async (req, res) => {
         if (phdDetails !== undefined) user.phdDetails = phdDetails;
         if (btechDetails !== undefined) user.btechDetails = btechDetails;
 
-        // Student fields
-        if (phone !== undefined) user.phone = phone;
-        if (branch !== undefined) user.branch = branch;
+        // Student fields — always allow name, year, section
+        if (name !== undefined) user.name = name;
         if (year !== undefined) user.year = year;
         if (section !== undefined) user.section = section;
+
+        // Phone and branch: only allow if student has NO registrations yet
+        if (user.role === 'student') {
+            const regCount = await Registration.countDocuments({ user: user._id });
+            if (regCount === 0) {
+                if (phone !== undefined) user.phone = phone;
+                if (branch !== undefined) user.branch = branch;
+            }
+            // If regCount > 0, silently ignore phone/branch changes
+        } else {
+            // Admin can always change phone/branch
+            if (phone !== undefined) user.phone = phone;
+            if (branch !== undefined) user.branch = branch;
+        }
 
         await user.save();
 

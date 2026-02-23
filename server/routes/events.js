@@ -199,6 +199,9 @@ router.delete('/:id', verifyToken, isAdmin, async (req, res) => {
                 fs.unlinkSync(bannerPath);
             }
         }
+        // Delete all registrations for this event
+        await Registration.deleteMany({ event: req.params.id });
+
         await Event.findByIdAndDelete(req.params.id);
         res.json({ message: 'Event deleted successfully.' });
     } catch (error) {

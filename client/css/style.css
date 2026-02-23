@@ -852,8 +852,18 @@ body {
 }
 
 .nav-pills .nav-link.active {
-    background: var(--gradient-primary);
-    color: var(--white);
+    background: var(--gradient-primary) !important;
+    color: #fff !important;
+    border-color: transparent !important;
+}
+
+.nav-pills .nav-link:not(.active) {
+    color: rgba(255, 255, 255, .75) !important;
+}
+
+.nav-pills .nav-link:not(.active):hover {
+    color: #fff !important;
+    background: rgba(255, 255, 255, .1);
 }
 
 /* ===== Misc ===== */

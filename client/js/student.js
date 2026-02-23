@@ -18,6 +18,7 @@ function authHeaders() {
 // Global State
 var allEvents = [];       // from /api/events/student-view (includes isRegistered per-student)
 var myRegistrations = []; // from /api/registrations/my (detailed, with QR codes)
+var profileLocked = false; // whether phone/branch are locked
 var pollTimer = null;
 
 // ═══════════════════════════════════════════
@@ -111,6 +112,7 @@ async function refreshAll() {
 
         // Render AFTER both datasets are loaded — no race condition
         renderEvents();
+        renderPastEvents();
         renderRegistrations();
     } catch (err) {
         console.error('Error refreshing data:', err);
@@ -136,6 +138,22 @@ async function loadProfile() {
         document.getElementById('profBranch').value = (user.branch || '').toUpperCase();
         document.getElementById('profYear').value = user.year || '';
         document.getElementById('profSection').value = (user.section || '').toUpperCase();
+
+        // Lock phone and branch if student has registrations
+        profileLocked = user.hasRegistered === true;
+        if (profileLocked) {
+            document.getElementById('profPhone').disabled = true;
+            document.getElementById('profPhone').style.background = '#f1f5f9';
+            document.getElementById('profBranch').disabled = true;
+            document.getElementById('profBranch').style.background = '#f1f5f9';
+            document.getElementById('profileLockedAlert').classList.remove('d-none');
+        } else {
+            document.getElementById('profPhone').disabled = false;
+            document.getElementById('profPhone').style.background = '';
+            document.getElementById('profBranch').disabled = false;
+            document.getElementById('profBranch').style.background = '';
+            document.getElementById('profileLockedAlert').classList.add('d-none');
+        }
     } catch (err) {
         console.error('Error loading profile:', err);
     }
@@ -150,11 +168,16 @@ async function saveProfile(e) {
 
     try {
         var payload = {
-            phone: document.getElementById('profPhone').value.trim(),
-            branch: document.getElementById('profBranch').value,
+            name: document.getElementById('profName').value.trim(),
             year: document.getElementById('profYear').value ? Number(document.getElementById('profYear').value) : undefined,
             section: document.getElementById('profSection').value
         };
+
+        // Only send phone/branch if not locked
+        if (!profileLocked) {
+            payload.phone = document.getElementById('profPhone').value.trim();
+            payload.branch = document.getElementById('profBranch').value;
+        }
 
         var res = await fetch(API + '/auth/profile', {
             method: 'PUT',
@@ -179,16 +202,44 @@ async function saveProfile(e) {
 }
 
 // ═══════════════════════════════════════════
-// ── RENDER EVENTS ──
+// ── HELPER: Split events into upcoming and past ──
+// Past = event date + 24 hours has passed
+// ═══════════════════════════════════════════
+function splitEvents() {
+    var now = new Date();
+    var upcoming = [];
+    var past = [];
+    var buffer24h = 24 * 60 * 60 * 1000; // 24 hours in ms
+
+    for (var i = 0; i < allEvents.length; i++) {
+        var event = allEvents[i];
+        var eventDate = new Date(event.date);
+        var cutoff = new Date(eventDate.getTime() + buffer24h);
+
+        if (cutoff > now) {
+            upcoming.push(event);
+        } else {
+            past.push(event);
+        }
+    }
+
+    return { upcoming: upcoming, past: past };
+}
+
+// ═══════════════════════════════════════════
+// ── RENDER EVENTS (Upcoming only) ──
 // Uses `event.isRegistered` from the server (per-student),
 // NOT a client-side comparison against myRegistrations.
 // ═══════════════════════════════════════════
 function renderEvents() {
     var eventsList = document.getElementById('eventsList');
     var badge = document.getElementById('eventCountBadge');
-    badge.textContent = allEvents.length + ' Event' + (allEvents.length !== 1 ? 's' : '');
+    var split = splitEvents();
+    var upcomingEvents = split.upcoming;
 
-    if (allEvents.length === 0) {
+    badge.textContent = upcomingEvents.length + ' Event' + (upcomingEvents.length !== 1 ? 's' : '');
+
+    if (upcomingEvents.length === 0) {
         eventsList.innerHTML = '<div class="col-12">' +
             '<div class="text-center py-5">' +
             '<i class="bi bi-calendar-x" style="font-size:3rem;opacity:.2;color:var(--primary);"></i>' +
@@ -199,73 +250,114 @@ function renderEvents() {
     }
 
     var html = '';
-    for (var i = 0; i < allEvents.length; i++) {
-        var event = allEvents[i];
-
-        // ── KEY FIX: use server-provided isRegistered flag (per-student) ──
-        var isRegistered = event.isRegistered === true;
-
-        var fee = Number(event.registrationFee) || 0;
-        var dateObj = new Date(event.date);
-        var isUpcoming = dateObj > new Date();
-        var day = dateObj.getDate();
-        var month = dateObj.toLocaleString('en', { month: 'short' }).toUpperCase();
-        var timeStr = dateObj.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
-        var bannerSrc = event.banner
-            ? window.location.origin + event.banner
-            : '';
-
-        // Button styles (inline to bypass Bootstrap overrides)
-        var regBtnStyle = 'background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border:none;padding:8px 22px;border-radius:20px;font-weight:600;font-size:.85rem;box-shadow:0 2px 8px rgba(99,102,241,.25);cursor:pointer;';
-        var regdBtnStyle = 'background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;border:none;padding:8px 18px;border-radius:20px;font-weight:600;font-size:.85rem;cursor:default;';
-
-        var registerBtn = '';
-        if (isRegistered) {
-            registerBtn = '<button class="btn btn-sm" style="' + regdBtnStyle + '" disabled>' +
-                '<i class="bi bi-check-circle-fill me-1"></i>Registered</button>';
-        } else if (!isUpcoming) {
-            registerBtn = '<button class="btn btn-sm btn-secondary" disabled>Event Ended</button>';
-        } else {
-            registerBtn = '<button class="btn btn-sm" style="' + regBtnStyle + '" data-action="register" data-event-id="' +
-                event._id + '" data-fee="' + fee + '">' +
-                '<i class="bi bi-lightning-charge-fill me-1"></i>' +
-                (fee > 0 ? 'Register \u00b7 \u20b9' + fee : 'Register Now') + '</button>';
-        }
-
-        var feeBadge = fee === 0
-            ? '<span class="student-event-badge free">FREE</span>'
-            : '<span class="student-event-badge paid">\u20b9' + fee + '</span>';
-
-        var feeInfoLine = fee === 0
-            ? '<div class="student-event-fee free-event"><i class="bi bi-gift-fill me-1"></i>Free Event</div>'
-            : '<div class="student-event-fee paid-event"><i class="bi bi-currency-rupee me-1"></i>Registration Fee: <strong>\u20b9' + fee + '</strong></div>';
-
-        var bannerBlock = bannerSrc
-            ? '<div class="student-event-banner"><img src="' + bannerSrc + '" alt="' + event.title + '">' + feeBadge + '</div>'
-            : '<div class="student-event-banner no-banner"><div class="student-event-date-big">' +
-            '<span class="day">' + day + '</span><span class="month">' + month + '</span></div>' + feeBadge + '</div>';
-
-        html += '<div class="col-md-6 col-lg-4">' +
-            '<div class="student-event-card">' +
-            bannerBlock +
-            '<div class="student-event-body">' +
-            '<h5 class="student-event-title">' + event.title + '</h5>' +
-            '<div class="student-event-meta">' +
-            '<span><i class="bi bi-calendar3"></i> ' + day + ' ' + month + ', ' + timeStr + '</span>' +
-            '<span><i class="bi bi-geo-alt-fill"></i> ' + event.venue + '</span>' +
-            '</div>' +
-            '<p class="student-event-desc">' + (event.description || '').substring(0, 100) +
-            (event.description && event.description.length > 100 ? '...' : '') + '</p>' +
-            feeInfoLine +
-            '<div class="student-event-footer">' +
-            registerBtn +
-            '</div>' +
-            '</div>' +
-            '</div>' +
-            '</div>';
+    for (var i = 0; i < upcomingEvents.length; i++) {
+        html += buildEventCard(upcomingEvents[i], false);
     }
 
     eventsList.innerHTML = html;
+}
+
+// ═══════════════════════════════════════════
+// ── RENDER PAST EVENTS ──
+// ═══════════════════════════════════════════
+function renderPastEvents() {
+    var pastList = document.getElementById('pastList');
+    var badge = document.getElementById('pastCountBadge');
+    var split = splitEvents();
+    var pastEvents = split.past;
+
+    badge.textContent = pastEvents.length + ' Event' + (pastEvents.length !== 1 ? 's' : '');
+
+    if (pastEvents.length === 0) {
+        pastList.innerHTML = '<div class="col-12">' +
+            '<div class="text-center py-5">' +
+            '<i class="bi bi-clock-history" style="font-size:3rem;opacity:.2;color:var(--gray);"></i>' +
+            '<p class="mt-3 text-muted fw-medium">No past events yet</p>' +
+            '<p class="text-muted small">Events will appear here after they conclude.</p>' +
+            '</div></div>';
+        return;
+    }
+
+    var html = '';
+    for (var i = 0; i < pastEvents.length; i++) {
+        html += buildEventCard(pastEvents[i], true);
+    }
+
+    pastList.innerHTML = html;
+}
+
+// ═══════════════════════════════════════════
+// ── BUILD EVENT CARD (shared for upcoming & past) ──
+// ═══════════════════════════════════════════
+function buildEventCard(event, isPast) {
+    var isRegistered = event.isRegistered === true;
+    var fee = Number(event.registrationFee) || 0;
+    var dateObj = new Date(event.date);
+    var day = dateObj.getDate();
+    var month = dateObj.toLocaleString('en', { month: 'short' }).toUpperCase();
+    var timeStr = dateObj.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+    var bannerSrc = event.banner
+        ? window.location.origin + event.banner
+        : '';
+
+    // Button styles (inline to bypass Bootstrap overrides)
+    var regBtnStyle = 'background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border:none;padding:8px 22px;border-radius:20px;font-weight:600;font-size:.85rem;box-shadow:0 2px 8px rgba(99,102,241,.25);cursor:pointer;';
+    var regdBtnStyle = 'background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;border:none;padding:8px 18px;border-radius:20px;font-weight:600;font-size:.85rem;cursor:default;';
+    var endedBtnStyle = 'background:#94a3b8;color:#fff;border:none;padding:8px 18px;border-radius:20px;font-weight:600;font-size:.85rem;cursor:default;opacity:.8;';
+
+    var registerBtn = '';
+    if (isPast) {
+        if (isRegistered) {
+            registerBtn = '<button class="btn btn-sm" style="' + regdBtnStyle + '" disabled>' +
+                '<i class="bi bi-check-circle-fill me-1"></i>Attended</button>';
+        } else {
+            registerBtn = '<button class="btn btn-sm" style="' + endedBtnStyle + '" disabled>' +
+                '<i class="bi bi-clock-history me-1"></i>Event Ended</button>';
+        }
+    } else if (isRegistered) {
+        registerBtn = '<button class="btn btn-sm" style="' + regdBtnStyle + '" disabled>' +
+            '<i class="bi bi-check-circle-fill me-1"></i>Registered</button>';
+    } else {
+        registerBtn = '<button class="btn btn-sm" style="' + regBtnStyle + '" data-action="register" data-event-id="' +
+            event._id + '" data-fee="' + fee + '">' +
+            '<i class="bi bi-lightning-charge-fill me-1"></i>' +
+            (fee > 0 ? 'Register \u00b7 \u20b9' + fee : 'Register Now') + '</button>';
+    }
+
+    var feeBadge = fee === 0
+        ? '<span class="student-event-badge free">FREE</span>'
+        : '<span class="student-event-badge paid">\u20b9' + fee + '</span>';
+
+    var feeInfoLine = fee === 0
+        ? '<div class="student-event-fee free-event"><i class="bi bi-gift-fill me-1"></i>Free Event</div>'
+        : '<div class="student-event-fee paid-event"><i class="bi bi-currency-rupee me-1"></i>Registration Fee: <strong>\u20b9' + fee + '</strong></div>';
+
+    var bannerBlock = bannerSrc
+        ? '<div class="student-event-banner"><img src="' + bannerSrc + '" alt="' + event.title + '">' + feeBadge + '</div>'
+        : '<div class="student-event-banner no-banner"><div class="student-event-date-big">' +
+        '<span class="day">' + day + '</span><span class="month">' + month + '</span></div>' + feeBadge + '</div>';
+
+    // Dim past event cards slightly
+    var cardStyle = isPast ? ' style="opacity:.85;"' : '';
+
+    return '<div class="col-md-6 col-lg-4">' +
+        '<div class="student-event-card"' + cardStyle + '>' +
+        bannerBlock +
+        '<div class="student-event-body">' +
+        '<h5 class="student-event-title">' + event.title + '</h5>' +
+        '<div class="student-event-meta">' +
+        '<span><i class="bi bi-calendar3"></i> ' + day + ' ' + month + ', ' + timeStr + '</span>' +
+        '<span><i class="bi bi-geo-alt-fill"></i> ' + event.venue + '</span>' +
+        '</div>' +
+        '<p class="student-event-desc">' + (event.description || '').substring(0, 100) +
+        (event.description && event.description.length > 100 ? '...' : '') + '</p>' +
+        feeInfoLine +
+        '<div class="student-event-footer">' +
+        registerBtn +
+        '</div>' +
+        '</div>' +
+        '</div>' +
+        '</div>';
 }
 
 // ═══════════════════════════════════════════
@@ -274,9 +366,18 @@ function renderEvents() {
 function renderRegistrations() {
     var regsList = document.getElementById('regsList');
     var badge = document.getElementById('regCountBadge');
-    badge.textContent = myRegistrations.length + ' Registration' + (myRegistrations.length !== 1 ? 's' : '');
 
-    if (myRegistrations.length === 0) {
+    // Filter out registrations whose event was deleted (null)
+    var validRegs = [];
+    for (var i = 0; i < myRegistrations.length; i++) {
+        if (myRegistrations[i].event) {
+            validRegs.push(myRegistrations[i]);
+        }
+    }
+
+    badge.textContent = validRegs.length + ' Registration' + (validRegs.length !== 1 ? 's' : '');
+
+    if (validRegs.length === 0) {
         regsList.innerHTML = '<div class="col-12">' +
             '<div class="text-center py-5">' +
             '<i class="bi bi-ticket-perforated" style="font-size:3rem;opacity:.2;color:var(--primary);"></i>' +
@@ -287,10 +388,9 @@ function renderRegistrations() {
     }
 
     var html = '';
-    for (var i = 0; i < myRegistrations.length; i++) {
-        var reg = myRegistrations[i];
+    for (var i = 0; i < validRegs.length; i++) {
+        var reg = validRegs[i];
         var event = reg.event;
-        if (!event) continue;
 
         var statusBadge = '', paymentInfo = '', qrSection = '';
         var dateStr = new Date(event.date).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
@@ -367,8 +467,11 @@ async function registerFree(eventId, buttonElem) {
             // Immediately update local state so UI updates instantly
             markEventRegistered(eventId);
             renderEvents();
+            renderPastEvents();
             // Then fetch fresh data in background
             refreshAll();
+            // Reload profile to check lock status
+            loadProfile();
         } else {
             showToast(data.message || 'Registration failed.', 'error');
             resetBtn(buttonElem);
@@ -449,6 +552,7 @@ async function confirmUpiPayment() {
             if (modal) modal.hide();
             // Refresh everything
             refreshAll();
+            loadProfile();
         } else {
             showToast(data.message || 'Payment confirmation failed.', 'error');
         }
