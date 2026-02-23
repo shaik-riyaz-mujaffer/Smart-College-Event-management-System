@@ -356,6 +356,10 @@ router.post('/verify-payment', verifyToken, async (req, res) => {
 // ═══════════════════════════════════════════════════════════════
 router.get('/my', verifyToken, async (req, res) => {
     try {
+        // Prevent caching so a different student never sees another user's registrations
+        res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+        res.set('Pragma', 'no-cache');
+
         const registrations = await Registration.find({ user: req.user._id })
             .populate('event', 'title description date venue maxParticipants registrationFee banner')
             .sort({ createdAt: -1 });
