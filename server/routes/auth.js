@@ -13,35 +13,57 @@ router.post('/register', async (req, res) => {
     try {
         const { name, email, password, role, registrationNumber, phone, branch, year, section } = req.body;
 
-        // Check if user exists by email
-        const existingEmail = await User.findOne({ email });
+        // ── Basic required-field validation ──
+        if (!name || !email || !password) {
+            return res.status(400).json({ message: 'Name, email and password are required.' });
+        }
+
+        // For students, registrationNumber and phone are mandatory
+        if (role !== 'admin') {
+            if (!registrationNumber || !registrationNumber.trim()) {
+                return res.status(400).json({ message: 'Registration number is required for students.' });
+            }
+            if (!phone || !phone.trim()) {
+                return res.status(400).json({ message: 'Phone number is required for students.' });
+            }
+        }
+
+        // ── Uniqueness checks (all case-insensitive where applicable) ──
+        const existingEmail = await User.findOne({ email: email.toLowerCase() });
         if (existingEmail) {
-            return res.status(400).json({ message: 'User already exists with this email.' });
+            return res.status(400).json({ message: 'A student with this email already exists.' });
         }
 
-        // For students, also check registration number and phone uniqueness
         if (role !== 'admin') {
-            if (registrationNumber) {
-                const existingReg = await User.findOne({ registrationNumber: registrationNumber.toUpperCase() });
-                if (existingReg) {
-                    return res.status(400).json({ message: 'This registration number is already in use.' });
-                }
+            // Check name uniqueness (case-insensitive, students only)
+            const escapedName = name.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const existingName = await User.findOne({
+                name: { $regex: new RegExp('^' + escapedName + '$', 'i') },
+                role: 'student'
+            });
+            if (existingName) {
+                return res.status(400).json({ message: 'A student with this name already exists. Please use your full name to differentiate.' });
             }
-            if (phone) {
-                const existingPhone = await User.findOne({ phone });
-                if (existingPhone) {
-                    return res.status(400).json({ message: 'This phone number is already in use.' });
-                }
+
+            // Check registration number uniqueness
+            const existingReg = await User.findOne({ registrationNumber: registrationNumber.trim().toUpperCase() });
+            if (existingReg) {
+                return res.status(400).json({ message: 'This registration number is already in use.' });
+            }
+
+            // Check phone uniqueness
+            const existingPhone = await User.findOne({ phone: phone.trim() });
+            if (existingPhone) {
+                return res.status(400).json({ message: 'This phone number is already in use.' });
             }
         }
 
-        // Build user data
-        const userData = { name, email, password, role: role || 'student' };
+        // ── Build user data ──
+        const userData = { name: name.trim(), email: email.toLowerCase().trim(), password, role: role || 'student' };
 
-        // Add student-specific fields
         if (role !== 'admin') {
-            if (registrationNumber) userData.registrationNumber = registrationNumber.toUpperCase();
-            if (phone) userData.phone = phone;
+            userData.registrationNumber = registrationNumber.trim().toUpperCase();
+            userData.phone = phone.trim();
             if (branch) userData.branch = branch.toUpperCase();
             if (year) userData.year = Number(year);
             if (section) userData.section = section.toUpperCase();
@@ -62,6 +84,16 @@ router.post('/register', async (req, res) => {
             token: generateToken(user._id)
         });
     } catch (error) {
+        // Handle MongoDB duplicate key errors with friendly messages
+        if (error.code === 11000) {
+            const field = Object.keys(error.keyPattern)[0];
+            const messages = {
+                email: 'A student with this email already exists.',
+                registrationNumber: 'This registration number is already in use.',
+                phone: 'This phone number is already in use.'
+            };
+            return res.status(400).json({ message: messages[field] || 'Duplicate value detected for: ' + field });
+        }
         res.status(500).json({ message: error.message });
     }
 });
