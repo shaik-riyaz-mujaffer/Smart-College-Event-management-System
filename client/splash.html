@@ -292,7 +292,7 @@
             width: 0%;
             background: linear-gradient(90deg, #6366f1, #a78bfa, #c084fc);
             border-radius: 4px;
-            animation: loadProgress 1.4s ease-in-out 1.1s forwards;
+            animation: loadProgress 2.4s ease-in-out 1.1s forwards;
         }
 
         @keyframes loadProgress {
@@ -311,25 +311,33 @@
 
         /* ── Page Exit Transition ── */
         .splash-exit {
-            animation: fadeOutScale 0.5s ease-in forwards;
+            animation: fadeOutScale 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
         }
 
         @keyframes fadeOutScale {
-            to {
+            0% {
+                opacity: 1;
+                transform: scale(1);
+                filter: blur(0);
+            }
+
+            100% {
                 opacity: 0;
-                transform: scale(1.05);
+                transform: scale(1.08);
+                filter: blur(4px);
             }
         }
 
-        /* ── White overlay that covers before redirect ── */
+        /* ── Smooth overlay that transitions to login page background ── */
         .transition-overlay {
             position: fixed;
             inset: 0;
-            background: linear-gradient(135deg, #0f0c29, #302b63);
+            /* Matches the login page --gradient-bg */
+            background: linear-gradient(135deg, #e0e7ff 0%, #fae8ff 30%, #fef3c7 60%, #cffafe 100%);
             z-index: 100;
             opacity: 0;
             pointer-events: none;
-            transition: opacity 0.4s ease;
+            transition: opacity 0.7s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .transition-overlay.active {
@@ -381,23 +389,27 @@
     <div class="transition-overlay" id="transitionOverlay"></div>
 
     <script>
-        // Total splash duration: 2.5 seconds
-        // 0.0s – 1.0s: Logo animates in
-        // 0.7s – 1.0s: Title & subtitle slide up
-        // 1.1s – 2.5s: Loading bar fills
-        // 2.0s: Start fade-out
-        // 2.5s: Redirect to index.html
+        // Total splash duration: ~3.5 seconds
+        // 0.0s – 1.0s : Logo + glow ring animate in
+        // 0.7s – 1.0s : Title & subtitle slide up
+        // 1.1s – 3.5s : Loading bar fills
+        // 2.8s         : Start fade-out sequence
+        // 3.5s         : Navigate to login page
 
         setTimeout(function () {
-            // Start exit animation
+            // 1. Fade the splash content out with blur + scale
             document.getElementById('splashContent').classList.add('splash-exit');
-            document.getElementById('transitionOverlay').classList.add('active');
 
-            // Redirect after exit animation completes
+            // 2. Simultaneously bring the light overlay in (matches login bg)
             setTimeout(function () {
-                window.location.href = '/login';
-            }, 500);
-        }, 2000);
+                document.getElementById('transitionOverlay').classList.add('active');
+            }, 100);
+
+            // 3. Navigate after the overlay fully covers the screen
+            setTimeout(function () {
+                window.location.replace('/login');
+            }, 700);
+        }, 2800);
     </script>
 </body>
 

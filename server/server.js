@@ -26,7 +26,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Serve static files
-app.use(express.static(path.join(__dirname, '..', 'client')));
+app.use(express.static(path.join(__dirname, '..', 'client'), { index: false }));
 // Serve uploads
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
