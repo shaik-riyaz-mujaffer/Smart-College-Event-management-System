@@ -1,0 +1,437 @@
+// ===== Admin Dashboard JavaScript =====
+
+const API = window.location.origin + '/api';
+
+function getUser() {
+    return JSON.parse(localStorage.getItem('user'));
+}
+
+function authHeaders() {
+    const user = getUser();
+    return {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + (user ? user.token : '')
+    };
+}
+
+function authHeadersOnly() {
+    const user = getUser();
+    return { 'Authorization': 'Bearer ' + (user ? user.token : '') };
+}
+
+// ── Init ──
+document.addEventListener('DOMContentLoaded', function () {
+    var user = getUser();
+    if (!user || user.role !== 'admin') {
+        window.location.href = 'index.html';
+        return;
+    }
+
+    document.getElementById('navAdminName').textContent = user.name || 'Admin';
+    loadProfile();
+    loadMyEvents();
+
+    document.getElementById('logoutBtn').addEventListener('click', function () {
+        localStorage.removeItem('user');
+        window.location.href = 'index.html';
+    });
+
+    initFeeToggle();
+    initBannerPreview();
+
+    document.getElementById('profileForm').addEventListener('submit', saveProfile);
+    document.getElementById('eventForm').addEventListener('submit', publishEvent);
+    document.getElementById('editEventForm').addEventListener('submit', updateEvent);
+
+    // ── Event Delegation for Edit & Delete buttons ──
+    document.getElementById('myEventsList').addEventListener('click', function (e) {
+        var editBtn = e.target.closest('[data-action="edit"]');
+        var deleteBtn = e.target.closest('[data-action="delete"]');
+
+        if (editBtn) {
+            e.preventDefault();
+            e.stopPropagation();
+            var eventId = editBtn.getAttribute('data-id');
+            openEditModal(eventId);
+        }
+
+        if (deleteBtn) {
+            e.preventDefault();
+            e.stopPropagation();
+            var eventId = deleteBtn.getAttribute('data-id');
+            deleteEvent(eventId);
+        }
+    });
+});
+
+// ═══════════════════════════════════════════
+// ── FEE TOGGLE ──
+// ═══════════════════════════════════════════
+var eventType = 'free';
+
+function initFeeToggle() {
+    var toggle = document.getElementById('feeToggle');
+    var buttons = toggle.querySelectorAll('.fee-btn');
+    var paidFields = document.getElementById('paidFields');
+
+    buttons.forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            buttons.forEach(function (b) { b.classList.remove('active'); });
+            btn.classList.add('active');
+            eventType = btn.dataset.type;
+            paidFields.style.display = eventType === 'paid' ? 'block' : 'none';
+        });
+    });
+}
+
+// ═══════════════════════════════════════════
+// ── BANNER PREVIEW ──
+// ═══════════════════════════════════════════
+function initBannerPreview() {
+    var fileInput = document.getElementById('evBanner');
+    var previewDiv = document.getElementById('bannerPreview');
+    var previewImg = document.getElementById('bannerPreviewImg');
+
+    fileInput.addEventListener('change', function () {
+        var file = fileInput.files[0];
+        if (file) {
+            var reader = new FileReader();
+            reader.onload = function (e) {
+                previewImg.src = e.target.result;
+                previewDiv.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+        } else {
+            previewDiv.style.display = 'none';
+        }
+    });
+}
+
+// ═══════════════════════════════════════════
+// ── PROFILE ──
+// ═══════════════════════════════════════════
+async function loadProfile() {
+    try {
+        var res = await fetch(API + '/auth/profile', { headers: authHeaders() });
+        if (!res.ok) return;
+        var user = await res.json();
+
+        document.getElementById('profName').value = user.name || '';
+        document.getElementById('profEmail').value = user.email || '';
+        document.getElementById('profDepartment').value = user.department || '';
+        document.getElementById('profDesignation').value = user.designation || '';
+        document.getElementById('profSubject').value = user.teachingSubject || '';
+        document.getElementById('profBranch').value = user.adminBranch || '';
+        document.getElementById('profPhd').value = user.phdDetails || '';
+        document.getElementById('profBtech').value = user.btechDetails || '';
+    } catch (err) {
+        console.error('Error loading profile:', err);
+    }
+}
+
+async function saveProfile(e) {
+    e.preventDefault();
+    var spinner = document.getElementById('profileSpinner');
+    var btn = document.getElementById('saveProfileBtn');
+    spinner.classList.remove('d-none');
+    btn.disabled = true;
+
+    try {
+        var payload = {
+            department: document.getElementById('profDepartment').value.trim(),
+            designation: document.getElementById('profDesignation').value,
+            teachingSubject: document.getElementById('profSubject').value.trim(),
+            adminBranch: document.getElementById('profBranch').value,
+            phdDetails: document.getElementById('profPhd').value.trim(),
+            btechDetails: document.getElementById('profBtech').value.trim()
+        };
+
+        var res = await fetch(API + '/auth/profile', {
+            method: 'PUT',
+            headers: authHeaders(),
+            body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+            showToast('Profile updated successfully!', 'success');
+        } else {
+            var data = await res.json();
+            showToast(data.message || 'Error saving profile.', 'error');
+        }
+    } catch (err) {
+        showToast('Network error.', 'error');
+    } finally {
+        spinner.classList.add('d-none');
+        btn.disabled = false;
+    }
+}
+
+// ═══════════════════════════════════════════
+// ── PUBLISH EVENT ──
+// ═══════════════════════════════════════════
+async function publishEvent(e) {
+    e.preventDefault();
+    var spinner = document.getElementById('publishSpinner');
+    var btn = document.getElementById('publishBtn');
+
+    var title = document.getElementById('evTitle').value.trim();
+    var description = document.getElementById('evDesc').value.trim();
+    var venue = document.getElementById('evVenue').value.trim();
+    var date = document.getElementById('evDate').value;
+
+    if (!title || !description || !venue || !date) {
+        showToast('Please fill in all required fields.', 'error');
+        return;
+    }
+
+    var formData = new FormData();
+    formData.append('title', title);
+    formData.append('description', description);
+    formData.append('venue', venue);
+    formData.append('date', date);
+
+    if (eventType === 'paid') {
+        var fee = document.getElementById('evFee').value;
+        var upiId = document.getElementById('evUpiId').value.trim();
+        if (!fee || Number(fee) <= 0) {
+            showToast('Please enter a valid registration fee.', 'error');
+            return;
+        }
+        if (!upiId) {
+            showToast('Please enter your UPI ID for paid events.', 'error');
+            return;
+        }
+        formData.append('registrationFee', fee);
+        formData.append('upiId', upiId);
+    } else {
+        formData.append('registrationFee', '0');
+    }
+
+    var bannerFile = document.getElementById('evBanner').files[0];
+    if (bannerFile) formData.append('banner', bannerFile);
+
+    spinner.classList.remove('d-none');
+    btn.disabled = true;
+
+    try {
+        var res = await fetch(API + '/events', {
+            method: 'POST',
+            headers: authHeadersOnly(),
+            body: formData
+        });
+
+        if (res.ok) {
+            showToast('🎉 Event published successfully!', 'success');
+            document.getElementById('eventForm').reset();
+            document.getElementById('bannerPreview').style.display = 'none';
+            document.getElementById('paidFields').style.display = 'none';
+            eventType = 'free';
+            var buttons = document.querySelectorAll('#feeToggle .fee-btn');
+            buttons.forEach(function (b) { b.classList.remove('active'); });
+            buttons[0].classList.add('active');
+
+            // Close modal
+            var modal = bootstrap.Modal.getInstance(document.getElementById('postEventModal'));
+            if (modal) modal.hide();
+            loadMyEvents();
+        } else {
+            var data = await res.json();
+            showToast(data.message || 'Error creating event.', 'error');
+        }
+    } catch (err) {
+        showToast('Network error.', 'error');
+    } finally {
+        spinner.classList.add('d-none');
+        btn.disabled = false;
+    }
+}
+
+// ═══════════════════════════════════════════
+// ── MY EVENTS LIST ──
+// ═══════════════════════════════════════════
+async function loadMyEvents() {
+    try {
+        var res = await fetch(API + '/events');
+        var allEvents = await res.json();
+        var user = getUser();
+
+        var myEvents = allEvents.filter(function (ev) {
+            if (!ev.createdBy) return false;
+            var creatorId = ev.createdBy._id || ev.createdBy;
+            return creatorId === user._id;
+        });
+
+        document.getElementById('eventCount').textContent = myEvents.length;
+        var container = document.getElementById('myEventsList');
+
+        if (myEvents.length === 0) {
+            container.innerHTML = '<div class="text-center text-muted py-5">' +
+                '<i class="bi bi-calendar-x" style="font-size:2.5rem;opacity:.3;"></i>' +
+                '<p class="mt-2 mb-0">No events posted yet. Click <strong>"Post New Event"</strong> to get started!</p></div>';
+            return;
+        }
+
+        var html = '';
+        for (var i = 0; i < myEvents.length; i++) {
+            var ev = myEvents[i];
+            var date = new Date(ev.date);
+            var dateStr = date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+            var timeStr = date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+            var isFree = !ev.registrationFee || ev.registrationFee === 0;
+            var regCount = ev.registrations || 0;
+            var isUpcoming = date > new Date();
+            var bannerHtml = ev.banner ? '<img src="' + ev.banner + '" class="event-card-banner" alt="Banner">' : '';
+
+            html += '<div class="admin-event-item">' +
+                bannerHtml +
+                '<div class="admin-event-body">' +
+                '<div class="d-flex justify-content-between align-items-start">' +
+                '<div class="flex-grow-1">' +
+                '<h6 class="mb-1 fw-bold">' + ev.title + '</h6>' +
+                '<p class="text-muted small mb-2" style="line-height:1.4;">' +
+                (ev.description ? ev.description.substring(0, 120) : '') +
+                (ev.description && ev.description.length > 120 ? '...' : '') + '</p>' +
+                '<div class="d-flex flex-wrap gap-2 mb-2">' +
+                '<span class="event-meta-pill"><i class="bi bi-geo-alt"></i> ' + ev.venue + '</span>' +
+                '<span class="event-meta-pill"><i class="bi bi-calendar3"></i> ' + dateStr + '</span>' +
+                '<span class="event-meta-pill"><i class="bi bi-clock"></i> ' + timeStr + '</span>' +
+                '</div>' +
+                '<div class="d-flex gap-2">' +
+                '<span class="badge ' + (isFree ? 'bg-success' : 'bg-warning text-dark') + '">' + (isFree ? '✨ Free' : '₹' + ev.registrationFee) + '</span>' +
+                '<span class="badge bg-light text-dark border"><i class="bi bi-people-fill me-1"></i>' + regCount + ' registered</span>' +
+                '<span class="badge ' + (isUpcoming ? 'bg-primary' : 'bg-secondary') + '">' + (isUpcoming ? '📅 Upcoming' : '✓ Past') + '</span>' +
+                '</div>' +
+                '</div>' +
+                '<div class="d-flex flex-column gap-2 ms-3">' +
+                '<button class="btn btn-sm btn-outline-primary" data-action="edit" data-id="' + ev._id + '" title="Edit Event">' +
+                '<i class="bi bi-pencil-fill me-1"></i>Edit</button>' +
+                '<button class="btn btn-sm btn-outline-danger" data-action="delete" data-id="' + ev._id + '" title="Delete Event">' +
+                '<i class="bi bi-trash-fill me-1"></i>Delete</button>' +
+                '</div>' +
+                '</div></div></div>';
+        }
+
+        container.innerHTML = html;
+    } catch (err) {
+        console.error('Error loading events:', err);
+    }
+}
+
+// ═══════════════════════════════════════════
+// ── EDIT EVENT ──
+// ═══════════════════════════════════════════
+async function openEditModal(eventId) {
+    try {
+        var res = await fetch(API + '/events/' + eventId);
+        if (!res.ok) { showToast('Event not found.', 'error'); return; }
+        var ev = await res.json();
+
+        document.getElementById('editEvId').value = ev._id;
+        document.getElementById('editEvTitle').value = ev.title || '';
+        document.getElementById('editEvDesc').value = ev.description || '';
+        document.getElementById('editEvVenue').value = ev.venue || '';
+        document.getElementById('editEvFee').value = ev.registrationFee || 0;
+        document.getElementById('editEvUpiId').value = ev.upiId || '';
+
+        if (ev.date) {
+            var d = new Date(ev.date);
+            var pad = function (n) { return n < 10 ? '0' + n : n; };
+            var localStr = d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) +
+                'T' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+            document.getElementById('editEvDate').value = localStr;
+        }
+
+        var editModal = new bootstrap.Modal(document.getElementById('editEventModal'));
+        editModal.show();
+    } catch (err) {
+        console.error('Error in openEditModal:', err);
+        showToast('Error loading event details.', 'error');
+    }
+}
+
+async function updateEvent(e) {
+    e.preventDefault();
+    var spinner = document.getElementById('updateSpinner');
+    var btn = document.getElementById('updateBtn');
+    var eventId = document.getElementById('editEvId').value;
+
+    var formData = new FormData();
+    formData.append('title', document.getElementById('editEvTitle').value.trim());
+    formData.append('description', document.getElementById('editEvDesc').value.trim());
+    formData.append('venue', document.getElementById('editEvVenue').value.trim());
+    formData.append('date', document.getElementById('editEvDate').value);
+    formData.append('registrationFee', document.getElementById('editEvFee').value || '0');
+    formData.append('upiId', document.getElementById('editEvUpiId').value.trim());
+
+    var bannerFile = document.getElementById('editEvBanner').files[0];
+    if (bannerFile) formData.append('banner', bannerFile);
+
+    spinner.classList.remove('d-none');
+    btn.disabled = true;
+
+    try {
+        var res = await fetch(API + '/events/' + eventId, {
+            method: 'PUT',
+            headers: authHeadersOnly(),
+            body: formData
+        });
+
+        if (res.ok) {
+            showToast('✅ Event updated successfully!', 'success');
+            var modal = bootstrap.Modal.getInstance(document.getElementById('editEventModal'));
+            if (modal) modal.hide();
+            loadMyEvents();
+        } else {
+            var data = await res.json();
+            showToast(data.message || 'Error updating event.', 'error');
+        }
+    } catch (err) {
+        showToast('Network error.', 'error');
+    } finally {
+        spinner.classList.add('d-none');
+        btn.disabled = false;
+    }
+}
+
+// ═══════════════════════════════════════════
+// ── DELETE EVENT ──
+// ═══════════════════════════════════════════
+async function deleteEvent(id) {
+    if (!confirm('Are you sure you want to delete this event? All its registrations will also be removed.')) return;
+
+    try {
+        var res = await fetch(API + '/events/' + id, {
+            method: 'DELETE',
+            headers: authHeaders()
+        });
+
+        if (res.ok) {
+            showToast('Event deleted.', 'success');
+            loadMyEvents();
+        } else {
+            var data = await res.json();
+            showToast(data.message || 'Failed to delete event.', 'error');
+        }
+    } catch (err) {
+        showToast('Network error.', 'error');
+    }
+}
+
+// ═══════════════════════════════════════════
+// ── TOAST ──
+// ═══════════════════════════════════════════
+function showToast(message, type) {
+    type = type || 'success';
+    var id = Date.now();
+    var html = '<div id="toast-' + id + '" class="toast align-items-center text-white bg-' +
+        (type === 'success' ? 'success' : 'danger') + ' border-0" role="alert">' +
+        '<div class="d-flex"><div class="toast-body">' + message + '</div>' +
+        '<button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>' +
+        '</div></div>';
+
+    document.getElementById('toastContainer').insertAdjacentHTML('beforeend', html);
+    var toastElem = document.getElementById('toast-' + id);
+    var toast = new bootstrap.Toast(toastElem, { delay: 3000 });
+    toast.show();
+    toastElem.addEventListener('hidden.bs.toast', function () { toastElem.remove(); });
+}

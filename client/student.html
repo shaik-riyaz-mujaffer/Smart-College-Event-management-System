@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Student Dashboard – Browse and register for campus events">
+    <title>Student Dashboard | CampusEvents</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link href="css/style.css" rel="stylesheet">
+</head>
+
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container-fluid px-4">
+            <a class="navbar-brand" href="#">
+                <i class="bi bi-calendar-event me-1"></i> CampusEvents
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#studentNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="studentNav">
+                <ul class="nav nav-pills ms-auto me-3" id="mainTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="events-tab" data-bs-toggle="pill"
+                            data-bs-target="#eventsPane" type="button" role="tab">
+                            <i class="bi bi-grid me-1"></i> Events
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="regs-tab" data-bs-toggle="pill" data-bs-target="#regsPane"
+                            type="button" role="tab">
+                            <i class="bi bi-qr-code me-1"></i> My Registrations
+                        </button>
+                    </li>
+                </ul>
+                <ul class="navbar-nav align-items-center gap-2">
+                    <!-- Student Name (clickable → profile offcanvas) -->
+                    <li class="nav-item">
+                        <a class="admin-name-link" href="#" data-bs-toggle="offcanvas"
+                            data-bs-target="#studentProfileOffcanvas">
+                            <span class="admin-avatar"><i class="bi bi-mortarboard-fill"></i></span>
+                            <span id="userName" class="fw-semibold">Student</span>
+                            <i class="bi bi-pencil-fill admin-edit-icon"></i>
+                        </a>
+                    </li>
+                    <!-- Logout -->
+                    <li class="nav-item">
+                        <button class="btn btn-sm btn-outline-light" id="logoutBtn">
+                            <i class="bi bi-box-arrow-right me-1"></i> Logout
+                        </button>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Toast container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!-- Student Profile Offcanvas                  -->
+    <!-- ═══════════════════════════════════════════ -->
+    <div class="offcanvas offcanvas-start admin-profile-offcanvas" tabindex="-1" id="studentProfileOffcanvas">
+        <div class="offcanvas-header"
+            style="background:linear-gradient(135deg,var(--primary),var(--secondary));color:#fff;padding:1.5rem;">
+            <div>
+                <h5 class="offcanvas-title mb-1">
+                    <i class="bi bi-person-gear me-2"></i>My Profile
+                </h5>
+                <p class="mb-0 small opacity-75">Update your details below</p>
+            </div>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas"></button>
+        </div>
+        <div class="offcanvas-body">
+            <form id="studentProfileForm" autocomplete="off">
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Full Name</label>
+                    <input type="text" class="form-control" id="profName" readonly style="background:#f8fafc;">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Email</label>
+                    <input type="email" class="form-control" id="profEmail" readonly style="background:#f8fafc;">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Registration Number</label>
+                    <input type="text" class="form-control" id="profRegNo" readonly style="background:#f8fafc;">
+                </div>
+                <hr class="my-3">
+                <p class="text-muted small mb-3"><i class="bi bi-pencil me-1"></i>You can update the fields below</p>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Phone Number</label>
+                    <div class="input-icon-wrapper">
+                        <i class="bi bi-telephone-fill input-icon"></i>
+                        <input type="tel" class="form-control modern-input" id="profPhone"
+                            placeholder="e.g. 9876543210">
+                    </div>
+                </div>
+                <div class="row g-3 mb-3">
+                    <div class="col-6">
+                        <label class="form-label fw-semibold">Branch</label>
+                        <select class="form-select" id="profBranch">
+                            <option value="">Select</option>
+                            <option value="CSE">CSE</option>
+                            <option value="ECE">ECE</option>
+                            <option value="EEE">EEE</option>
+                            <option value="MECH">MECH</option>
+                            <option value="CIVIL">CIVIL</option>
+                            <option value="IT">IT</option>
+                            <option value="AIDS">AI&DS</option>
+                            <option value="AIML">AI&ML</option>
+                            <option value="CSM">CSM</option>
+                            <option value="CSD">CSD</option>
+                            <option value="MBA">MBA</option>
+                            <option value="MCA">MCA</option>
+                        </select>
+                    </div>
+                    <div class="col-3">
+                        <label class="form-label fw-semibold">Year</label>
+                        <select class="form-select" id="profYear">
+                            <option value="">—</option>
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                            <option value="4">4</option>
+                        </select>
+                    </div>
+                    <div class="col-3">
+                        <label class="form-label fw-semibold">Section</label>
+                        <select class="form-select" id="profSection">
+                            <option value="">—</option>
+                            <option value="A">A</option>
+                            <option value="B">B</option>
+                            <option value="C">C</option>
+                            <option value="D">D</option>
+                            <option value="E">E</option>
+                        </select>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-gradient w-100 py-2" id="saveStudentProfileBtn">
+                    <span class="spinner-border spinner-border-sm d-none me-2" id="studentProfileSpinner"></span>
+                    <i class="bi bi-check-lg me-1"></i> Save Profile
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!-- Main Content                               -->
+    <!-- ═══════════════════════════════════════════ -->
+    <div class="container py-4">
+        <div class="tab-content">
+            <!-- Events Tab -->
+            <div class="tab-pane fade show active" id="eventsPane" role="tabpanel">
+                <div class="d-flex align-items-center justify-content-between mb-4">
+                    <h4 class="mb-0 fw-bold">
+                        <i class="bi bi-calendar2-week text-primary me-2"></i>Upcoming Events
+                    </h4>
+                    <span class="badge bg-primary fs-6 px-3 py-2" id="eventCountBadge">0 Events</span>
+                </div>
+                <div class="row g-4" id="eventsList">
+                    <!-- Events loaded dynamically -->
+                </div>
+            </div>
+
+            <!-- My Registrations Tab -->
+            <div class="tab-pane fade" id="regsPane" role="tabpanel">
+                <div class="d-flex align-items-center justify-content-between mb-4">
+                    <h4 class="mb-0 fw-bold">
+                        <i class="bi bi-ticket-perforated text-primary me-2"></i>My Registrations
+                    </h4>
+                    <span class="badge bg-success fs-6 px-3 py-2" id="regCountBadge">0 Registrations</span>
+                </div>
+                <div class="row g-4" id="regsList">
+                    <!-- Registrations loaded dynamically -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!-- UPI Payment Modal                          -->
+    <!-- ═══════════════════════════════════════════ -->
+    <div class="modal fade" id="upiPaymentModal" tabindex="-1" data-bs-backdrop="static">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content" style="border-radius:18px;overflow:hidden;border:none;">
+                <div class="modal-header"
+                    style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border:none;padding:1.25rem 1.5rem;">
+                    <h5 class="modal-title"><i class="bi bi-qr-code me-2"></i>UPI Payment</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body text-center p-4">
+                    <p class="mb-2 fw-semibold" id="upiEventTitle" style="color:var(--dark);font-size:1.1rem;"></p>
+                    <div class="d-inline-block p-3 bg-white rounded-4 shadow-sm mb-3" style="border:2px solid #e8ecf1;">
+                        <img id="upiQrImage" src="" alt="UPI QR Code" style="width:240px;height:240px;">
+                    </div>
+                    <div class="mb-3">
+                        <span class="badge fs-5 px-4 py-2"
+                            style="background:linear-gradient(135deg,#6366f1,#8b5cf6);border-radius:30px;">
+                            Pay ₹<span id="upiAmount"></span>
+                        </span>
+                    </div>
+                    <div class="text-muted small mb-3">
+                        <p class="mb-1"><i class="bi bi-phone me-1"></i> Scan the QR code with any UPI app</p>
+                        <p class="mb-0"><strong>UPI ID:</strong> <code id="upiIdDisplay"></code></p>
+                    </div>
+                    <hr>
+                    <div class="alert alert-info py-2 px-3 mb-3" style="border-radius:10px;font-size:.85rem;">
+                        <i class="bi bi-info-circle me-1"></i> After paying, enter the UTR/Transaction ID and click
+                        <strong>"I Have Paid"</strong>
+                    </div>
+                    <div class="mb-3">
+                        <input type="text" class="form-control" id="upiTxnIdInput"
+                            placeholder="Enter UTR / Transaction ID (from your UPI app)" style="border-radius:10px;">
+                    </div>
+                    <input type="hidden" id="upiRegistrationId">
+                    <button class="btn btn-lg w-100 fw-bold" id="confirmUpiBtn"
+                        style="background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;border:none;border-radius:12px;padding:12px;">
+                        <i class="bi bi-check-circle me-2"></i>I Have Paid
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/student.js"></script>
+</body>
+
+</html>

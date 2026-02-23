@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Smart College Event Management System – Login">
+  <title>Sign In | CampusEvents</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap"
+    rel="stylesheet">
+  <link href="css/style.css" rel="stylesheet">
+</head>
+
+<body>
+  <!-- Floating animated shapes -->
+  <div class="auth-bg-shapes">
+    <div class="shape shape-1"></div>
+    <div class="shape shape-2"></div>
+    <div class="shape shape-3"></div>
+    <div class="shape shape-4"></div>
+    <div class="shape shape-5"></div>
+  </div>
+
+  <div class="auth-wrapper">
+    <div class="auth-card glass-card">
+      <!-- Brand -->
+      <div class="brand">
+        <div class="brand-icon">
+          <i class="bi bi-calendar-event-fill"></i>
+        </div>
+        <h2>CampusEvents</h2>
+        <p>Welcome back! Sign in to continue</p>
+      </div>
+
+      <!-- Role Toggle -->
+      <div class="role-toggle" id="roleToggle">
+        <button class="role-btn active" data-role="student">
+          <i class="bi bi-mortarboard-fill me-1"></i> Student
+        </button>
+        <button class="role-btn" data-role="admin">
+          <i class="bi bi-shield-lock-fill me-1"></i> Admin
+        </button>
+        <div class="toggle-slider"></div>
+      </div>
+
+      <div id="alertBox"></div>
+
+      <!-- Login Form -->
+      <form id="loginForm" autocomplete="off">
+        <!-- Student Identifier -->
+        <div class="form-floating-group mb-3" id="studentIdentifierGroup">
+          <div class="input-icon-wrapper">
+            <i class="bi bi-person-badge-fill input-icon"></i>
+            <input type="text" class="form-control modern-input" id="identifier"
+              placeholder="Registration Number or Email" required>
+          </div>
+          <small class="form-hint"><i class="bi bi-info-circle me-1"></i>Enter your Reg. Number (e.g. 21B01A0501) or
+            Email</small>
+        </div>
+
+        <!-- Admin Identifier -->
+        <div class="form-floating-group mb-3 d-none" id="adminIdentifierGroup">
+          <div class="input-icon-wrapper">
+            <i class="bi bi-envelope-fill input-icon"></i>
+            <input type="email" class="form-control modern-input" id="adminIdentifier"
+              placeholder="Admin Email Address">
+          </div>
+        </div>
+
+        <!-- Password -->
+        <div class="form-floating-group mb-4">
+          <div class="input-icon-wrapper">
+            <i class="bi bi-lock-fill input-icon"></i>
+            <input type="password" class="form-control modern-input" id="password" placeholder="Password" required>
+            <button type="button" class="password-toggle" id="togglePassword">
+              <i class="bi bi-eye"></i>
+            </button>
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-gradient w-100 py-3" id="loginBtn">
+          <span class="spinner-border spinner-border-sm d-none me-2" id="loginSpinner"></span>
+          <i class="bi bi-box-arrow-in-right me-1"></i> Sign In
+        </button>
+      </form>
+
+      <div class="auth-footer">
+        <p>Don't have an account?
+          <a href="register.html" class="auth-link">Create one <i class="bi bi-arrow-right"></i></a>
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="js/auth.js"></script>
+</body>
+
+</html>

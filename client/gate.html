@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gate Entry | CampusEvents</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            transition: background 0.5s ease;
+        }
+
+        body.loading {
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+        }
+
+        body.success {
+            background: linear-gradient(135deg, #059669 0%, #10b981 50%, #34d399 100%);
+        }
+
+        body.already {
+            background: linear-gradient(135deg, #d97706 0%, #f59e0b 50%, #fbbf24 100%);
+        }
+
+        body.error {
+            background: linear-gradient(135deg, #dc2626 0%, #ef4444 50%, #f87171 100%);
+        }
+
+        body.payment {
+            background: linear-gradient(135deg, #7c3aed 0%, #8b5cf6 50%, #a78bfa 100%);
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            border-radius: 24px;
+            padding: 48px 36px;
+            max-width: 420px;
+            width: 100%;
+            text-align: center;
+            color: #fff;
+            animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(40px) scale(0.95);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .icon-circle {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 24px;
+            font-size: 48px;
+            animation: popIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.3s both;
+        }
+
+        @keyframes popIn {
+            from {
+                opacity: 0;
+                transform: scale(0);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.05);
+            }
+        }
+
+        .icon-circle.pulse {
+            animation: popIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.3s both, pulse 2s ease-in-out 0.8s infinite;
+        }
+
+        .status-title {
+            font-size: 28px;
+            font-weight: 800;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .status-message {
+            font-size: 16px;
+            opacity: 0.9;
+            margin-bottom: 24px;
+            line-height: 1.5;
+        }
+
+        .info-box {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 16px;
+            margin-top: 16px;
+            text-align: left;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 0;
+            font-size: 14px;
+        }
+
+        .info-row .label {
+            opacity: 0.7;
+            font-weight: 500;
+        }
+
+        .info-row .value {
+            font-weight: 700;
+        }
+
+        .info-row+.info-row {
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .spinner {
+            width: 48px;
+            height: 48px;
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 24px;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .brand {
+            margin-top: 32px;
+            font-size: 12px;
+            opacity: 0.5;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+    </style>
+</head>
+
+<body class="loading">
+    <div class="card" id="resultCard">
+        <div class="spinner" id="loadingSpinner"></div>
+        <div class="status-title" id="statusTitle">Verifying...</div>
+        <div class="status-message" id="statusMessage">Checking your registration</div>
+        <div id="infoSection"></div>
+        <div class="brand">CampusEvents Gate System</div>
+    </div>
+
+    <script>
+        const API = window.location.origin + '/api';
+
+        async function verifyEntry() {
+            const pathParts = window.location.pathname.split('/');
+            const token = pathParts[pathParts.length - 1];
+
+            if (!token || token === 'gate') {
+                showError('Invalid QR Code', 'No verification token found in this link.');
+                return;
+            }
+
+            try {
+                const res = await fetch(`${API}/registrations/gate-check/${token}`, { method: 'POST' });
+                const data = await res.json();
+
+                if (res.ok) {
+                    showSuccess(data);
+                } else {
+                    if (data.code === 'ALREADY_ENTERED') {
+                        showAlreadyEntered(data);
+                    } else if (data.code === 'PAYMENT_PENDING' || data.code === 'PAYMENT_REJECTED') {
+                        showPaymentIssue(data);
+                    } else {
+                        showError('Entry Denied', data.message);
+                    }
+                }
+            } catch (error) {
+                showError('Connection Error', 'Could not reach the server. Please try again.');
+            }
+        }
+
+        function showSuccess(data) {
+            document.body.className = 'success';
+            document.getElementById('resultCard').innerHTML = `
+                <div class="icon-circle pulse">✓</div>
+                <div class="status-title">Entry Confirmed</div>
+                <div class="status-message">Welcome! You may enter the event.</div>
+                <div class="info-box">
+                    <div class="info-row"><span class="label">Student</span><span class="value">${data.registration.user.name}</span></div>
+                    <div class="info-row"><span class="label">ID</span><span class="value">${data.registration.user.registrationNumber || 'N/A'}</span></div>
+                    <div class="info-row"><span class="label">Event</span><span class="value">${data.registration.event.title}</span></div>
+                    <div class="info-row"><span class="label">Time</span><span class="value">${new Date().toLocaleTimeString()}</span></div>
+                </div>
+                <div class="brand">CampusEvents Gate System</div>
+            `;
+        }
+
+        function showAlreadyEntered(data) {
+            document.body.className = 'already';
+            document.getElementById('resultCard').innerHTML = `
+                <div class="icon-circle">⚠</div>
+                <div class="status-title">Already Entered</div>
+                <div class="status-message">This QR code has already been used for entry.</div>
+                <div class="info-box">
+                    <div class="info-row"><span class="label">Student</span><span class="value">${data.student || 'N/A'}</span></div>
+                    <div class="info-row"><span class="label">Event</span><span class="value">${data.event || 'N/A'}</span></div>
+                    <div class="info-row"><span class="label">Status</span><span class="value">Previously Admitted</span></div>
+                    ${data.enteredAt ? `<div class="info-row"><span class="label">At</span><span class="value">${new Date(data.enteredAt).toLocaleTimeString()}</span></div>` : ''}
+                </div>
+                <div class="brand">CampusEvents Gate System</div>
+            `;
+        }
+
+        function showPaymentIssue(data) {
+            document.body.className = 'payment';
+            document.getElementById('resultCard').innerHTML = `
+                <div class="icon-circle">₹</div>
+                <div class="status-title">Payment Required</div>
+                <div class="status-message">${data.message}</div>
+                <div class="brand">CampusEvents Gate System</div>
+            `;
+        }
+
+        function showError(title, message) {
+            document.body.className = 'error';
+            document.getElementById('resultCard').innerHTML = `
+                <div class="icon-circle">✗</div>
+                <div class="status-title">${title}</div>
+                <div class="status-message">${message}</div>
+                <div class="brand">CampusEvents Gate System</div>
+            `;
+        }
+        verifyEntry();
+    </script>
+</body>
+
+</html>
