@@ -32,8 +32,13 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('userName').textContent = user.name || 'Student';
 
     loadProfile();
-    loadEvents();
-    loadMyRegistrations();
+    // IMPORTANT: Load registrations FIRST, then events.
+    // renderEvents() checks myRegistrations to show correct button state.
+    // If events render before registrations load, buttons show "Register Now"
+    // even for already-registered students.
+    loadMyRegistrations().then(function () {
+        loadEvents();
+    });
 
     // Logout
     document.getElementById('logoutBtn').addEventListener('click', function () {
@@ -73,17 +78,23 @@ document.addEventListener('DOMContentLoaded', function () {
     // UPI confirm button
     document.getElementById('confirmUpiBtn').addEventListener('click', confirmUpiPayment);
 
-    // Auto-refresh every 15s
-    pollTimer = setInterval(function () { loadEvents(); }, 15000);
+    // Auto-refresh every 15s – refresh BOTH registrations and events
+    // so button states stay accurate for this student
+    pollTimer = setInterval(function () { refreshAll(); }, 15000);
 
     // Refresh on tab visibility
     document.addEventListener('visibilitychange', function () {
         if (!document.hidden) {
-            loadEvents();
-            loadMyRegistrations();
+            refreshAll();
         }
     });
 });
+
+// ── Refresh both registrations and events (registrations first) ──
+async function refreshAll() {
+    await loadMyRegistrations();
+    await loadEvents();
+}
 
 // ═══════════════════════════════════════════
 // ── PROFILE ──

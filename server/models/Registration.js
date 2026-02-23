@@ -46,6 +46,10 @@ const registrationSchema = new mongoose.Schema({
 
 // Compound index: one registration per user per event
 registrationSchema.index({ event: 1, user: 1 }, { unique: true });
+// Fast capacity checks: countDocuments({ event: eventId })
+registrationSchema.index({ event: 1 });
+// Fast "My Registrations" queries: find({ user: userId })
+registrationSchema.index({ user: 1 });
 // Fast token lookups for gate scanning
 registrationSchema.index({ qrToken: 1 });
 
