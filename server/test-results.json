@@ -1,0 +1,87 @@
+{
+  "total": 20,
+  "passed": 11,
+  "failed": 9,
+  "tests": [
+    {
+      "label": "Student A logged in",
+      "passed": true
+    },
+    {
+      "label": "Student B logged in",
+      "passed": true
+    },
+    {
+      "label": "Admin logged in",
+      "passed": true
+    },
+    {
+      "label": "Event 1 created",
+      "passed": true
+    },
+    {
+      "label": "Event 2 created",
+      "passed": true
+    },
+    {
+      "label": "A registered Event 1",
+      "passed": false
+    },
+    {
+      "label": "A sees Event1 isRegistered=true",
+      "passed": false
+    },
+    {
+      "label": "A sees Event2 isRegistered=false",
+      "passed": true
+    },
+    {
+      "label": "B sees Event1 isRegistered=false (not polluted)",
+      "passed": true
+    },
+    {
+      "label": "B sees Event2 isRegistered=false",
+      "passed": true
+    },
+    {
+      "label": "A registered Event 2 (cross-event OK)",
+      "passed": false
+    },
+    {
+      "label": "A sees Event1 still registered",
+      "passed": false
+    },
+    {
+      "label": "A sees Event2 now registered",
+      "passed": false
+    },
+    {
+      "label": "B registered Event 1",
+      "passed": false
+    },
+    {
+      "label": "A unchanged: Event1 registered",
+      "passed": false
+    },
+    {
+      "label": "A unchanged: Event2 registered",
+      "passed": false
+    },
+    {
+      "label": "B sees Event1 registered",
+      "passed": false
+    },
+    {
+      "label": "B sees Event2 NOT registered",
+      "passed": true
+    },
+    {
+      "label": "Duplicate blocked (400)",
+      "passed": true
+    },
+    {
+      "label": "Says already registered",
+      "passed": true
+    }
+  ]
+}

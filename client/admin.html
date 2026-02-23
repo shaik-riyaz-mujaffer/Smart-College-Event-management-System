@@ -24,6 +24,17 @@
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="adminNav">
+                <ul class="navbar-nav me-auto ms-3 align-items-center">
+                    <li class="nav-item">
+                        <button class="btn btn-sm btn-warning fw-bold position-relative" id="paymentQueueBtn"
+                            data-bs-toggle="modal" data-bs-target="#paymentQueueModal">
+                            <i class="bi bi-hourglass-split me-1"></i> Payment Queue
+                            <span
+                                class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none"
+                                id="pqBadge">0</span>
+                        </button>
+                    </li>
+                </ul>
                 <ul class="navbar-nav ms-auto align-items-center gap-2">
                     <!-- Admin Name + Edit Profile (embedded) -->
                     <li class="nav-item">
@@ -320,6 +331,30 @@
                             <i class="bi bi-calendar-x" style="font-size:2.5rem;opacity:.3;"></i>
                             <p class="mt-2 mb-0">No events posted yet. Click <strong>"Post New Event"</strong> to
                                 get started!</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!-- Payment Queue Modal                        -->
+    <!-- ═══════════════════════════════════════════ -->
+    <div class="modal fade" id="paymentQueueModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable">
+            <div class="modal-content" style="border:none;border-radius:16px;overflow:hidden;">
+                <div class="modal-header"
+                    style="background:linear-gradient(135deg,#f59e0b,#ef4444);color:#fff;border:none;">
+                    <h5 class="modal-title"><i class="bi bi-hourglass-split me-2"></i>Payment Queue — Awaiting Approval
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-0">
+                    <div id="paymentQueueContent">
+                        <div class="text-center text-muted py-5">
+                            <i class="bi bi-inbox" style="font-size:2.5rem;opacity:.3;"></i>
+                            <p class="mt-2 mb-0">No payments awaiting approval.</p>
                         </div>
                     </div>
                 </div>

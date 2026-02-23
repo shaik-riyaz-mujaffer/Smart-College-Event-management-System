@@ -1,0 +1,65 @@
+{
+  "totalRegs": 1,
+  "totalUsers": 16,
+  "totalEvents": 16,
+  "indexes": [
+    {
+      "name": "_id_",
+      "key": {
+        "_id": 1
+      },
+      "unique": false
+    },
+    {
+      "name": "event_1_user_1",
+      "key": {
+        "event": 1,
+        "user": 1
+      },
+      "unique": true
+    },
+    {
+      "name": "qrToken_1",
+      "key": {
+        "qrToken": 1
+      },
+      "unique": true
+    },
+    {
+      "name": "user_id_1_event_id_1",
+      "key": {
+        "user_id": 1,
+        "event_id": 1
+      },
+      "unique": true
+    },
+    {
+      "name": "event_id_1",
+      "key": {
+        "event_id": 1
+      },
+      "unique": false
+    },
+    {
+      "name": "event_1",
+      "key": {
+        "event": 1
+      },
+      "unique": false
+    },
+    {
+      "name": "user_1",
+      "key": {
+        "user": 1
+      },
+      "unique": false
+    }
+  ],
+  "sampleRegs": [
+    {
+      "id": "699ab295a3feff59490101dd",
+      "event": "699aa65ce333edd683bd9e86",
+      "user": "699a9ff2ed329425a865bd6f"
+    }
+  ]
+}

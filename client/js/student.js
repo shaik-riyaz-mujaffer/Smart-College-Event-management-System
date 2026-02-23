@@ -1,4 +1,5 @@
 // ===== Student Dashboard JavaScript =====
+// Fixed: per-student registration state, no cross-student/cross-event pollution
 
 var API = window.location.origin + '/api';
 
@@ -15,8 +16,8 @@ function authHeaders() {
 }
 
 // Global State
-var allEvents = [];
-var myRegistrations = [];
+var allEvents = [];       // from /api/events/student-view (includes isRegistered per-student)
+var myRegistrations = []; // from /api/registrations/my (detailed, with QR codes)
 var pollTimer = null;
 
 // ═══════════════════════════════════════════
@@ -32,13 +33,10 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('userName').textContent = user.name || 'Student';
 
     loadProfile();
-    // IMPORTANT: Load registrations FIRST, then events.
-    // renderEvents() checks myRegistrations to show correct button state.
-    // If events render before registrations load, buttons show "Register Now"
-    // even for already-registered students.
-    loadMyRegistrations().then(function () {
-        loadEvents();
-    });
+
+    // Load BOTH datasets in parallel, then render once both are ready.
+    // This eliminates the race where events render before registrations.
+    refreshAll();
 
     // Logout
     document.getElementById('logoutBtn').addEventListener('click', function () {
@@ -78,8 +76,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // UPI confirm button
     document.getElementById('confirmUpiBtn').addEventListener('click', confirmUpiPayment);
 
-    // Auto-refresh every 15s – refresh BOTH registrations and events
-    // so button states stay accurate for this student
+    // Auto-refresh every 15s
     pollTimer = setInterval(function () { refreshAll(); }, 15000);
 
     // Refresh on tab visibility
@@ -90,10 +87,34 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 });
 
-// ── Refresh both registrations and events (registrations first) ──
+// ── Refresh BOTH datasets in parallel, render only after both complete ──
 async function refreshAll() {
-    await loadMyRegistrations();
-    await loadEvents();
+    try {
+        // Fetch both endpoints simultaneously
+        var [eventsRes, regsRes] = await Promise.all([
+            fetch(API + '/events/student-view', {
+                headers: authHeaders(),
+                cache: 'no-store'
+            }),
+            fetch(API + '/registrations/my', {
+                headers: authHeaders(),
+                cache: 'no-store'
+            })
+        ]);
+
+        if (eventsRes.ok) {
+            allEvents = await eventsRes.json();
+        }
+        if (regsRes.ok) {
+            myRegistrations = await regsRes.json();
+        }
+
+        // Render AFTER both datasets are loaded — no race condition
+        renderEvents();
+        renderRegistrations();
+    } catch (err) {
+        console.error('Error refreshing data:', err);
+    }
 }
 
 // ═══════════════════════════════════════════
@@ -158,20 +179,9 @@ async function saveProfile(e) {
 }
 
 // ═══════════════════════════════════════════
-// ── LOAD EVENTS ──
-// ═══════════════════════════════════════════
-async function loadEvents() {
-    try {
-        var res = await fetch(API + '/events');
-        allEvents = await res.json();
-        renderEvents();
-    } catch (error) {
-        console.error('Error loading events:', error);
-    }
-}
-
-// ═══════════════════════════════════════════
 // ── RENDER EVENTS ──
+// Uses `event.isRegistered` from the server (per-student),
+// NOT a client-side comparison against myRegistrations.
 // ═══════════════════════════════════════════
 function renderEvents() {
     var eventsList = document.getElementById('eventsList');
@@ -191,10 +201,10 @@ function renderEvents() {
     var html = '';
     for (var i = 0; i < allEvents.length; i++) {
         var event = allEvents[i];
-        var isRegistered = myRegistrations.some(function (reg) {
-            return reg.event && reg.event._id === event._id &&
-                (reg.paymentStatus === 'paid' || reg.paymentStatus === 'free');
-        });
+
+        // ── KEY FIX: use server-provided isRegistered flag (per-student) ──
+        var isRegistered = event.isRegistered === true;
+
         var fee = Number(event.registrationFee) || 0;
         var dateObj = new Date(event.date);
         var isUpcoming = dateObj > new Date();
@@ -259,22 +269,8 @@ function renderEvents() {
 }
 
 // ═══════════════════════════════════════════
-// ── LOAD & RENDER REGISTRATIONS ──
+// ── RENDER REGISTRATIONS ──
 // ═══════════════════════════════════════════
-async function loadMyRegistrations() {
-    try {
-        var res = await fetch(API + '/registrations/my', {
-            headers: authHeaders(),
-            cache: 'no-store'  // prevent serving another user's cached registrations
-        });
-        myRegistrations = await res.json();
-        renderRegistrations();
-        renderEvents(); // update button states
-    } catch (error) {
-        console.error('Error loading registrations:', error);
-    }
-}
-
 function renderRegistrations() {
     var regsList = document.getElementById('regsList');
     var badge = document.getElementById('regCountBadge');
@@ -308,6 +304,12 @@ function renderRegistrations() {
                 '<p class="small fw-bold mb-0" style="font-family:monospace;color:var(--primary);">' + reg._id + '</p>' +
                 '<div class="alert alert-info py-1 px-3 mt-2 mb-0" style="font-size:.72rem;border-radius:8px;">' +
                 '<i class="bi bi-info-circle me-1"></i> Show this QR at the gate for entry (one-time scan only)</div></div>';
+        } else if (reg.paymentStatus === 'awaiting_approval') {
+            statusBadge = '<span class="badge" style="background:linear-gradient(135deg,#f59e0b,#ef4444);color:#fff;"><i class="bi bi-hourglass-split me-1"></i>Awaiting Approval</span>';
+            paymentInfo = '<div class="alert alert-warning py-2 mt-3 mb-0 small" style="border-radius:8px;">' +
+                '<i class="bi bi-clock-history me-1"></i> Your payment has been submitted. ' +
+                'The admin will verify your transaction ID and approve your registration. ' +
+                'You will receive a confirmation email with your QR ticket once approved.</div>';
         } else if (reg.paymentStatus === 'pending') {
             statusBadge = '<span class="badge bg-warning text-dark"><i class="bi bi-hourglass-split me-1"></i>Pending</span>';
             paymentInfo = '<div class="alert alert-warning py-2 mt-3 mb-0 small" style="border-radius:8px;">' +
@@ -356,13 +358,17 @@ async function registerFree(eventId, buttonElem) {
         var res = await fetch(API + '/registrations/register-free', {
             method: 'POST',
             headers: authHeaders(),
-            body: JSON.stringify({ eventId: eventId })
+            body: JSON.stringify({ eventId: eventId }),
+            cache: 'no-store'
         });
         var data = await res.json();
         if (res.ok) {
             showToast('Registration successful! Check your email for the QR ticket.', 'success');
-            loadMyRegistrations();
-            loadEvents();
+            // Immediately update local state so UI updates instantly
+            markEventRegistered(eventId);
+            renderEvents();
+            // Then fetch fresh data in background
+            refreshAll();
         } else {
             showToast(data.message || 'Registration failed.', 'error');
             resetBtn(buttonElem);
@@ -379,7 +385,8 @@ async function startUpiPayment(eventId, buttonElem) {
         var res = await fetch(API + '/registrations/register-upi', {
             method: 'POST',
             headers: authHeaders(),
-            body: JSON.stringify({ eventId: eventId })
+            body: JSON.stringify({ eventId: eventId }),
+            cache: 'no-store'
         });
         var data = await res.json();
 
@@ -429,18 +436,19 @@ async function confirmUpiPayment() {
             body: JSON.stringify({
                 registrationId: registrationId,
                 upiTxnId: upiTxnId
-            })
+            }),
+            cache: 'no-store'
         });
         var data = await res.json();
 
         if (res.ok) {
-            showToast('Payment confirmed! QR ticket sent to your email.', 'success');
+            showToast('Payment submitted! Awaiting admin approval.', 'success');
             // Close modal
             var modalEl = document.getElementById('upiPaymentModal');
             var modal = bootstrap.Modal.getInstance(modalEl);
             if (modal) modal.hide();
-            loadMyRegistrations();
-            loadEvents();
+            // Refresh everything
+            refreshAll();
         } else {
             showToast(data.message || 'Payment confirmation failed.', 'error');
         }
@@ -449,6 +457,17 @@ async function confirmUpiPayment() {
     } finally {
         btn.disabled = false;
         btn.innerHTML = '<i class="bi bi-check-circle me-2"></i>I Have Paid';
+    }
+}
+
+// ── Instantly mark an event as registered in local state ──
+// This gives immediate UI feedback before the server round-trip completes.
+function markEventRegistered(eventId) {
+    for (var i = 0; i < allEvents.length; i++) {
+        if (allEvents[i]._id === eventId) {
+            allEvents[i].isRegistered = true;
+            break;
+        }
     }
 }
 

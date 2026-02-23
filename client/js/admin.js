@@ -30,6 +30,7 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('navAdminName').textContent = user.name || 'Admin';
     loadProfile();
     loadMyEvents();
+    loadPaymentQueue();
 
     document.getElementById('logoutBtn').addEventListener('click', function () {
         localStorage.removeItem('user');
@@ -42,6 +43,26 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('profileForm').addEventListener('submit', saveProfile);
     document.getElementById('eventForm').addEventListener('submit', publishEvent);
     document.getElementById('editEventForm').addEventListener('submit', updateEvent);
+
+    // Payment queue delegation
+    document.getElementById('paymentQueueContent').addEventListener('click', function (e) {
+        var approveBtn = e.target.closest('[data-action="approve-pay"]');
+        var rejectBtn = e.target.closest('[data-action="reject-pay"]');
+        if (approveBtn) {
+            approvePayment(approveBtn.getAttribute('data-id'));
+        }
+        if (rejectBtn) {
+            rejectPayment(rejectBtn.getAttribute('data-id'));
+        }
+    });
+
+    // Refresh queue on modal open
+    document.getElementById('paymentQueueModal').addEventListener('show.bs.modal', function () {
+        loadPaymentQueue();
+    });
+
+    // Poll payment queue every 15 seconds
+    setInterval(loadPaymentQueue, 15000);
 
     // ── Event Delegation for Edit & Delete buttons ──
     document.getElementById('myEventsList').addEventListener('click', function (e) {
@@ -411,6 +432,108 @@ async function deleteEvent(id) {
         } else {
             var data = await res.json();
             showToast(data.message || 'Failed to delete event.', 'error');
+        }
+    } catch (err) {
+        showToast('Network error.', 'error');
+    }
+}
+
+// ═══════════════════════════════════════════
+// ── PAYMENT QUEUE ──
+// ═══════════════════════════════════════════
+async function loadPaymentQueue() {
+    try {
+        var res = await fetch(API + '/admin/payment-queue', { headers: authHeaders(), cache: 'no-store' });
+        if (!res.ok) return;
+        var queue = await res.json();
+
+        // Update badge
+        var badge = document.getElementById('pqBadge');
+        if (queue.length > 0) {
+            badge.textContent = queue.length;
+            badge.classList.remove('d-none');
+        } else {
+            badge.classList.add('d-none');
+        }
+
+        var container = document.getElementById('paymentQueueContent');
+        if (queue.length === 0) {
+            container.innerHTML = '<div class="text-center text-muted py-5">' +
+                '<i class="bi bi-inbox" style="font-size:2.5rem;opacity:.3;"></i>' +
+                '<p class="mt-2 mb-0">No payments awaiting approval.</p></div>';
+            return;
+        }
+
+        var html = '<div class="table-responsive"><table class="table table-hover mb-0 pq-table">' +
+            '<thead><tr>' +
+            '<th>Student</th><th>Reg No</th><th>Email</th><th>Branch</th><th>Section</th>' +
+            '<th>Event</th><th>Transaction ID</th><th>Amount</th><th>Actions</th>' +
+            '</tr></thead><tbody>';
+
+        for (var i = 0; i < queue.length; i++) {
+            var reg = queue[i];
+            var u = reg.user || {};
+            var ev = reg.event || {};
+            var txnId = reg.upiTxnId || reg.transactionId || '—';
+            var amount = reg.amountPaid ? '₹' + reg.amountPaid : '—';
+            var date = new Date(reg.createdAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
+
+            html += '<tr>' +
+                '<td><strong>' + (u.name || '—') + '</strong><br><small class="text-muted">' + date + '</small></td>' +
+                '<td><code>' + (u.registrationNumber || '—') + '</code></td>' +
+                '<td>' + (u.email || '—') + '</td>' +
+                '<td>' + (u.branch || '—') + '</td>' +
+                '<td>' + (u.section || '—') + '</td>' +
+                '<td><strong>' + (ev.title || '—') + '</strong></td>' +
+                '<td><code class="text-primary fw-bold">' + txnId + '</code></td>' +
+                '<td>' + amount + '</td>' +
+                '<td class="text-nowrap">' +
+                '<button class="btn btn-sm btn-success me-1" data-action="approve-pay" data-id="' + reg._id + '">' +
+                '<i class="bi bi-check-lg me-1"></i>Confirm</button>' +
+                '<button class="btn btn-sm btn-outline-danger" data-action="reject-pay" data-id="' + reg._id + '">' +
+                '<i class="bi bi-x-lg"></i></button>' +
+                '</td></tr>';
+        }
+
+        html += '</tbody></table></div>';
+        container.innerHTML = html;
+    } catch (err) {
+        console.error('Error loading payment queue:', err);
+    }
+}
+
+async function approvePayment(regId) {
+    if (!confirm('Confirm this payment? The student will receive a QR ticket.')) return;
+    try {
+        var res = await fetch(API + '/admin/approve-payment/' + regId, {
+            method: 'POST',
+            headers: authHeaders()
+        });
+        var data = await res.json();
+        if (res.ok) {
+            showToast('✅ ' + data.message, 'success');
+            loadPaymentQueue();
+        } else {
+            showToast(data.message || 'Error approving payment.', 'error');
+        }
+    } catch (err) {
+        showToast('Network error.', 'error');
+    }
+}
+
+async function rejectPayment(regId) {
+    if (!confirm('Reject this payment? The student will need to pay again.')) return;
+    try {
+        var res = await fetch(API + '/admin/reject-payment/' + regId, {
+            method: 'POST',
+            headers: authHeaders()
+        });
+        var data = await res.json();
+        if (res.ok) {
+            showToast('Payment rejected.', 'success');
+            loadPaymentQueue();
+        } else {
+            showToast(data.message || 'Error rejecting payment.', 'error');
         }
     } catch (err) {
         showToast('Network error.', 'error');

@@ -15,7 +15,7 @@ const registrationSchema = new mongoose.Schema({
     // ── Payment (Razorpay) ──
     paymentStatus: {
         type: String,
-        enum: ['free', 'pending', 'paid', 'failed'],
+        enum: ['free', 'pending', 'awaiting_approval', 'paid', 'failed'],
         default: 'free'
     },
     razorpayOrderId: { type: String },
@@ -50,7 +50,6 @@ registrationSchema.index({ event: 1, user: 1 }, { unique: true });
 registrationSchema.index({ event: 1 });
 // Fast "My Registrations" queries: find({ user: userId })
 registrationSchema.index({ user: 1 });
-// Fast token lookups for gate scanning
-registrationSchema.index({ qrToken: 1 });
+// Note: qrToken index already created by { unique: true, sparse: true } on the field
 
 module.exports = mongoose.model('Registration', registrationSchema);

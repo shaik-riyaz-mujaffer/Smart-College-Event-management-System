@@ -48,6 +48,49 @@ router.get('/', async (req, res) => {
     }
 });
 
+// GET /api/events/student-view – events with per-student registration status
+// Returns every event plus { isRegistered, pendingRegistrationId } for the
+// logged-in student.  One fetch replaces two separate calls and eliminates
+// the race condition that caused "already registered" to leak between users.
+router.get('/student-view', verifyToken, async (req, res) => {
+    try {
+        // Prevent any caching — each student MUST get their own response
+        res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+        res.set('Pragma', 'no-cache');
+
+        const events = await Event.find()
+            .populate('registrations')   // virtual count
+            .sort({ date: 1 });
+
+        // All registrations for THIS student (any status)
+        const userRegs = await Registration.find({ user: req.user._id })
+            .select('event paymentStatus');
+
+        // Build fast lookup maps
+        const confirmedSet = new Set();   // paid or free
+        const pendingMap = new Map();     // eventId → registrationId (for retry)
+        for (const r of userRegs) {
+            const eid = r.event.toString();
+            if (r.paymentStatus === 'paid' || r.paymentStatus === 'free') {
+                confirmedSet.add(eid);
+            } else if (r.paymentStatus === 'pending') {
+                pendingMap.set(eid, r._id.toString());
+            }
+        }
+
+        const enriched = events.map(e => {
+            const ej = e.toJSON();
+            ej.isRegistered = confirmedSet.has(e._id.toString());
+            ej.pendingRegistrationId = pendingMap.get(e._id.toString()) || null;
+            return ej;
+        });
+
+        res.json(enriched);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
 // GET /api/events/:id – single event
 router.get('/:id', async (req, res) => {
     try {

@@ -1449,3 +1449,54 @@ body {
         width: 100%;
     }
 }
+
+/* ═══════════════════════════════════════════ */
+/* PAYMENT QUEUE TABLE                        */
+/* ═══════════════════════════════════════════ */
+.pq-table {
+    font-size: .85rem;
+}
+
+.pq-table thead {
+    background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+.pq-table th {
+    font-weight: 600;
+    font-size: .78rem;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+    color: #495057;
+    padding: .75rem .5rem;
+    white-space: nowrap;
+    border-bottom: 2px solid #dee2e6;
+}
+
+.pq-table td {
+    padding: .65rem .5rem;
+    vertical-align: middle;
+}
+
+.pq-table tbody tr {
+    transition: background .15s ease;
+}
+
+.pq-table tbody tr:hover {
+    background: rgba(99, 102, 241, .04);
+}
+
+#paymentQueueBtn {
+    border-radius: 10px;
+    padding: .35rem .9rem;
+    font-size: .82rem;
+    letter-spacing: .02em;
+    transition: all .2s ease;
+}
+
+#paymentQueueBtn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(245, 158, 11, .35);
+}

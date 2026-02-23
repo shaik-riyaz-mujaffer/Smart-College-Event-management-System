@@ -47,7 +47,8 @@ app.use('/api/registrations', require('./routes/registrations'));
 app.use('/api/admin', require('./routes/admin'));
 
 // ── Frontend Page Routing ──
-app.get('/', (req, res) => res.sendFile(path.join(__dirname, '..', 'client', 'index.html')));
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, '..', 'client', 'splash.html')));
+app.get('/login', (req, res) => res.sendFile(path.join(__dirname, '..', 'client', 'index.html')));
 app.get('/register', (req, res) => res.sendFile(path.join(__dirname, '..', 'client', 'register.html')));
 app.get('/student', (req, res) => res.sendFile(path.join(__dirname, '..', 'client', 'student.html')));
 app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, '..', 'client', 'admin.html')));

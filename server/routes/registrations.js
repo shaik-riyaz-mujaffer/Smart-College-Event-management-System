@@ -73,6 +73,7 @@ async function finalizeRegistration(registration, req) {
 // ═══════════════════════════════════════════════════════════════
 router.post('/register-free', verifyToken, registrationLimiter, async (req, res) => {
     try {
+        res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
         const { eventId } = req.body;
         const event = await Event.findById(eventId);
 
@@ -125,6 +126,7 @@ router.post('/register-free', verifyToken, registrationLimiter, async (req, res)
 // ═══════════════════════════════════════════════════════════════
 router.post('/register-upi', verifyToken, registrationLimiter, async (req, res) => {
     try {
+        res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
         const { eventId } = req.body;
         const event = await Event.findById(eventId);
 
@@ -197,6 +199,7 @@ router.post('/register-upi', verifyToken, registrationLimiter, async (req, res) 
 // ═══════════════════════════════════════════════════════════════
 router.post('/confirm-upi', verifyToken, async (req, res) => {
     try {
+        res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
         const { registrationId, upiTxnId } = req.body;
 
         const registration = await Registration.findById(registrationId);
@@ -212,16 +215,18 @@ router.post('/confirm-upi', verifyToken, async (req, res) => {
             return res.status(400).json({ message: 'Payment already confirmed.' });
         }
 
-        // Mark as paid
-        registration.paymentStatus = 'paid';
+        // Mark as awaiting admin approval (NOT paid yet)
+        registration.paymentStatus = 'awaiting_approval';
         if (upiTxnId) registration.upiTxnId = upiTxnId;
         await registration.save();
 
-        // Generate QR ticket + send email
-        const populated = await finalizeRegistration(registration, req);
+        // Do NOT generate QR or send email yet — admin must approve first
+        const populated = await Registration.findById(registration._id)
+            .populate('user', 'name email')
+            .populate('event', 'title date venue');
 
         res.json({
-            message: 'Payment confirmed! Your QR ticket has been sent to your email.',
+            message: 'Payment submitted! Awaiting admin approval. You will receive a confirmation email once approved.',
             registration: populated
         });
     } catch (error) {

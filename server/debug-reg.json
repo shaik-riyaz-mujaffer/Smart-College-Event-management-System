@@ -1,0 +1,4 @@
+{
+  "status": 400,
+  "body": "{\"message\":\"You have already registered for this event.\"}"
+}
