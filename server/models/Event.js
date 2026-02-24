@@ -38,6 +38,12 @@ const eventSchema = new mongoose.Schema({
         trim: true,
         default: ''
     },
+    targetBranch: {
+        type: String,
+        default: 'ALL',
+        trim: true,
+        uppercase: true
+    },
     createdBy: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',

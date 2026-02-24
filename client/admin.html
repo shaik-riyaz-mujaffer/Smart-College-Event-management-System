@@ -36,6 +36,13 @@
                     </li>
                 </ul>
                 <ul class="navbar-nav ms-auto align-items-center gap-2">
+                    <!-- My Students -->
+                    <li class="nav-item">
+                        <button class="btn btn-sm btn-info fw-bold" id="myStudentsBtn" data-bs-toggle="modal"
+                            data-bs-target="#myStudentsModal">
+                            <i class="bi bi-people-fill me-1"></i> My Students
+                        </button>
+                    </li>
                     <!-- Admin Name + Edit Profile (embedded) -->
                     <li class="nav-item">
                         <a class="nav-link admin-name-link" href="#" data-bs-toggle="offcanvas"
@@ -109,6 +116,16 @@
                                 <img id="bannerPreviewImg" src="" alt="Banner preview"
                                     style="max-width:100%;max-height:180px;border-radius:12px;object-fit:cover;box-shadow:0 4px 16px rgba(0,0,0,.1);">
                             </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Target Branch</label>
+                            <div class="input-icon-wrapper">
+                                <i class="bi bi-building input-icon"></i>
+                                <select class="form-control modern-input modern-select" id="evTargetBranch">
+                                    <option value="ALL">All Branches</option>
+                                </select>
+                            </div>
+                            <small class="text-muted">Choose which branch students can see this event</small>
                         </div>
                         <div class="mb-3">
                             <label class="form-label fw-semibold d-block">Registration Type</label>
@@ -202,6 +219,15 @@
                             <label class="form-label fw-semibold">Replace Banner (optional)</label>
                             <input type="file" class="form-control" id="editEvBanner" accept="image/*"
                                 style="border:2px solid #e2e8f0;border-radius:10px;">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Target Branch</label>
+                            <div class="input-icon-wrapper">
+                                <i class="bi bi-building input-icon"></i>
+                                <select class="form-control modern-input modern-select" id="editEvTargetBranch">
+                                    <option value="ALL">All Branches</option>
+                                </select>
+                            </div>
                         </div>
                         <div class="row g-3 mb-3">
                             <div class="col-6">
@@ -355,6 +381,56 @@
                         <div class="text-center text-muted py-5">
                             <i class="bi bi-inbox" style="font-size:2.5rem;opacity:.3;"></i>
                             <p class="mt-2 mb-0">No payments awaiting approval.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!-- My Students Modal                          -->
+    <!-- ═══════════════════════════════════════════ -->
+    <div class="modal fade" id="myStudentsModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable">
+            <div class="modal-content" style="border:none;border-radius:16px;overflow:hidden;">
+                <div class="modal-header"
+                    style="background:linear-gradient(135deg,#0ea5e9,#6366f1);color:#fff;border:none;">
+                    <h5 class="modal-title"><i class="bi bi-people-fill me-2"></i>My Students</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-3">
+                    <!-- Year Tabs -->
+                    <ul class="nav nav-pills mb-3" id="studentYearTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" data-bs-toggle="pill" data-bs-target="#year1Pane"
+                                type="button" role="tab">1st Year</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" data-bs-toggle="pill" data-bs-target="#year2Pane" type="button"
+                                role="tab">2nd Year</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" data-bs-toggle="pill" data-bs-target="#year3Pane" type="button"
+                                role="tab">3rd Year</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" data-bs-toggle="pill" data-bs-target="#year4Pane" type="button"
+                                role="tab">4th Year</button>
+                        </li>
+                    </ul>
+                    <div class="tab-content">
+                        <div class="tab-pane fade show active" id="year1Pane" role="tabpanel">
+                            <div id="studentsYear1" class="table-responsive"></div>
+                        </div>
+                        <div class="tab-pane fade" id="year2Pane" role="tabpanel">
+                            <div id="studentsYear2" class="table-responsive"></div>
+                        </div>
+                        <div class="tab-pane fade" id="year3Pane" role="tabpanel">
+                            <div id="studentsYear3" class="table-responsive"></div>
+                        </div>
+                        <div class="tab-pane fade" id="year4Pane" role="tabpanel">
+                            <div id="studentsYear4" class="table-responsive"></div>
                         </div>
                     </div>
                 </div>

@@ -141,14 +141,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const registerForm = document.getElementById('registerForm');
     if (registerForm) {
         const studentFields = document.getElementById('studentFields');
+        const adminBranchField = document.getElementById('adminBranchField');
         let currentRole = 'student';
 
         initRoleToggle(document.getElementById('roleToggle'), (role) => {
             currentRole = role;
             if (role === 'admin') {
                 studentFields.style.display = 'none';
+                adminBranchField.style.display = 'block';
             } else {
                 studentFields.style.display = 'block';
+                adminBranchField.style.display = 'none';
             }
         });
 
@@ -193,6 +196,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 payload.branch = branch;
                 payload.year = year;
                 payload.section = section;
+            } else {
+                // Admin branch selection
+                const adminBranch = document.getElementById('adminBranch').value;
+                if (!adminBranch) {
+                    showAlert(alertBox, 'Please select your branch.');
+                    return;
+                }
+                payload.adminBranch = adminBranch;
             }
 
             spinner.classList.remove('d-none');

@@ -53,6 +53,10 @@ const userSchema = new mongoose.Schema({
         trim: true,
         uppercase: true
     },
+    isCoordinator: {
+        type: Boolean,
+        default: false
+    },
     // ── Admin profile fields (all optional) ──
     department: {
         type: String,

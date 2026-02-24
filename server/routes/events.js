@@ -63,6 +63,13 @@ router.get('/student-view', verifyToken, async (req, res) => {
             .populate('createdBy', 'name')
             .sort({ date: 1 });
 
+        // Filter events by student's branch
+        const studentBranch = (req.user.branch || '').toUpperCase();
+        const visibleEvents = events.filter(e => {
+            const tb = (e.targetBranch || 'ALL').toUpperCase();
+            return tb === 'ALL' || tb === studentBranch;
+        });
+
         // All registrations for THIS student (any status)
         const userRegs = await Registration.find({ user: req.user._id })
             .select('event paymentStatus');
@@ -79,7 +86,7 @@ router.get('/student-view', verifyToken, async (req, res) => {
             }
         }
 
-        const enriched = events.map(e => {
+        const enriched = visibleEvents.map(e => {
             const ej = e.toJSON();
             ej.isRegistered = confirmedSet.has(e._id.toString());
             ej.pendingRegistrationId = pendingMap.get(e._id.toString()) || null;
@@ -110,7 +117,7 @@ router.get('/:id', async (req, res) => {
 // POST /api/events – create event (admin only, with optional banner upload)
 router.post('/', verifyToken, isAdmin, upload.single('banner'), async (req, res) => {
     try {
-        const { title, description, date, venue, maxParticipants, registrationFee, upiId } = req.body;
+        const { title, description, date, venue, maxParticipants, registrationFee, upiId, targetBranch } = req.body;
         const eventData = {
             title,
             description,
@@ -119,6 +126,7 @@ router.post('/', verifyToken, isAdmin, upload.single('banner'), async (req, res)
             maxParticipants: maxParticipants || 9999,
             registrationFee: registrationFee || 0,
             upiId: upiId || '',
+            targetBranch: targetBranch || 'ALL',
             createdBy: req.user._id
         };
 
@@ -141,7 +149,7 @@ router.put('/:id', verifyToken, isAdmin, upload.single('banner'), async (req, re
             return res.status(404).json({ message: 'Event not found.' });
         }
 
-        const { title, description, date, venue, maxParticipants, registrationFee, upiId } = req.body;
+        const { title, description, date, venue, maxParticipants, registrationFee, upiId, targetBranch } = req.body;
         event.title = title || event.title;
         event.description = description || event.description;
         event.date = date || event.date;
@@ -149,6 +157,7 @@ router.put('/:id', verifyToken, isAdmin, upload.single('banner'), async (req, re
         event.maxParticipants = maxParticipants || event.maxParticipants;
         event.registrationFee = registrationFee !== undefined ? registrationFee : event.registrationFee;
         if (upiId !== undefined) event.upiId = upiId;
+        if (targetBranch !== undefined) event.targetBranch = targetBranch;
 
         if (req.file) {
             // Delete old banner if it exists

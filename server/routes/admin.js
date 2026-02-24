@@ -3,6 +3,7 @@ const router = express.Router();
 const QRCode = require('qrcode');
 const Event = require('../models/Event');
 const Registration = require('../models/Registration');
+const User = require('../models/User');
 const { verifyToken, isAdmin } = require('../middleware/auth');
 const { generateQrToken } = require('../utils/qrToken');
 const { sendRegistrationEmail } = require('../utils/email');
@@ -189,6 +190,64 @@ router.post('/reject-payment/:id', verifyToken, isAdmin, async (req, res) => {
         await registration.save();
 
         res.json({ message: 'Payment rejected.' });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
+// ═══════════════════════════════════════════════════════════════
+// MY STUDENTS — branch-filtered student list
+// ═══════════════════════════════════════════════════════════════
+
+// GET /api/admin/students
+router.get('/students', verifyToken, isAdmin, async (req, res) => {
+    try {
+        const admin = await User.findById(req.user._id).select('adminBranch');
+        if (!admin || !admin.adminBranch) {
+            return res.status(400).json({ message: 'Please set your branch in your profile first.' });
+        }
+
+        const query = { role: 'student', branch: admin.adminBranch.toUpperCase() };
+        if (req.query.year) {
+            query.year = Number(req.query.year);
+        }
+
+        const students = await User.find(query)
+            .select('name registrationNumber phone year branch section isCoordinator')
+            .sort({ year: 1, name: 1 });
+
+        res.json(students);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
+// POST /api/admin/toggle-coordinator/:id
+router.post('/toggle-coordinator/:id', verifyToken, isAdmin, async (req, res) => {
+    try {
+        const admin = await User.findById(req.user._id).select('adminBranch');
+        if (!admin || !admin.adminBranch) {
+            return res.status(400).json({ message: 'Please set your branch in your profile first.' });
+        }
+
+        const student = await User.findById(req.params.id);
+        if (!student || student.role !== 'student') {
+            return res.status(404).json({ message: 'Student not found.' });
+        }
+
+        if (student.branch !== admin.adminBranch.toUpperCase()) {
+            return res.status(403).json({ message: 'You can only manage students from your branch.' });
+        }
+
+        student.isCoordinator = !student.isCoordinator;
+        await student.save();
+
+        res.json({
+            message: student.isCoordinator
+                ? `${student.name} appointed as coordinator.`
+                : `${student.name} removed from coordinator role.`,
+            isCoordinator: student.isCoordinator
+        });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }

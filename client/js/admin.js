@@ -61,6 +61,20 @@ document.addEventListener('DOMContentLoaded', function () {
         loadPaymentQueue();
     });
 
+    // Refresh students on modal open
+    document.getElementById('myStudentsModal').addEventListener('show.bs.modal', function () {
+        loadMyStudents();
+    });
+
+    // Student list delegation for coordinator toggle
+    document.getElementById('myStudentsModal').addEventListener('click', function (e) {
+        var btn = e.target.closest('[data-action="toggle-coordinator"]');
+        if (btn) {
+            e.preventDefault();
+            toggleCoordinator(btn.getAttribute('data-id'));
+        }
+    });
+
     // Poll payment queue every 15 seconds
     setInterval(loadPaymentQueue, 15000);
 
@@ -145,8 +159,26 @@ async function loadProfile() {
         document.getElementById('profBranch').value = user.adminBranch || '';
         document.getElementById('profPhd').value = user.phdDetails || '';
         document.getElementById('profBtech').value = user.btechDetails || '';
+
+        // Populate target branch dropdowns
+        populateBranchDropdowns(user.adminBranch || '');
     } catch (err) {
         console.error('Error loading profile:', err);
+    }
+}
+
+function populateBranchDropdowns(adminBranch) {
+    var selectors = ['evTargetBranch', 'editEvTargetBranch'];
+    for (var i = 0; i < selectors.length; i++) {
+        var sel = document.getElementById(selectors[i]);
+        if (!sel) continue;
+        sel.innerHTML = '<option value="ALL">All Branches</option>';
+        if (adminBranch) {
+            var opt = document.createElement('option');
+            opt.value = adminBranch.toUpperCase();
+            opt.textContent = adminBranch.toUpperCase() + ' Only';
+            sel.appendChild(opt);
+        }
     }
 }
 
@@ -230,6 +262,9 @@ async function publishEvent(e) {
 
     var bannerFile = document.getElementById('evBanner').files[0];
     if (bannerFile) formData.append('banner', bannerFile);
+
+    // Target branch
+    formData.append('targetBranch', document.getElementById('evTargetBranch').value || 'ALL');
 
     spinner.classList.remove('d-none');
     btn.disabled = true;
@@ -364,6 +399,10 @@ async function openEditModal(eventId) {
 
         var editModal = new bootstrap.Modal(document.getElementById('editEventModal'));
         editModal.show();
+
+        // Set target branch dropdown
+        var editBranchSel = document.getElementById('editEvTargetBranch');
+        if (editBranchSel) editBranchSel.value = (ev.targetBranch || 'ALL').toUpperCase();
     } catch (err) {
         console.error('Error in openEditModal:', err);
         showToast('Error loading event details.', 'error');
@@ -383,6 +422,7 @@ async function updateEvent(e) {
     formData.append('date', document.getElementById('editEvDate').value);
     formData.append('registrationFee', document.getElementById('editEvFee').value || '0');
     formData.append('upiId', document.getElementById('editEvUpiId').value.trim());
+    formData.append('targetBranch', document.getElementById('editEvTargetBranch').value || 'ALL');
 
     var bannerFile = document.getElementById('editEvBanner').files[0];
     if (bannerFile) formData.append('banner', bannerFile);
@@ -534,6 +574,95 @@ async function rejectPayment(regId) {
             loadPaymentQueue();
         } else {
             showToast(data.message || 'Error rejecting payment.', 'error');
+        }
+    } catch (err) {
+        showToast('Network error.', 'error');
+    }
+}
+
+// ═══════════════════════════════════════════
+// ── MY STUDENTS ──
+// ═══════════════════════════════════════════
+async function loadMyStudents() {
+    try {
+        var res = await fetch(API + '/admin/students', { headers: authHeaders(), cache: 'no-store' });
+        if (!res.ok) {
+            var errData = await res.json();
+            showToast(errData.message || 'Error loading students.', 'error');
+            return;
+        }
+        var students = await res.json();
+
+        // Group by year
+        var grouped = { 1: [], 2: [], 3: [], 4: [] };
+        for (var i = 0; i < students.length; i++) {
+            var yr = students[i].year || 1;
+            if (!grouped[yr]) grouped[yr] = [];
+            grouped[yr].push(students[i]);
+        }
+
+        for (var y = 1; y <= 4; y++) {
+            renderStudentTable(grouped[y] || [], y);
+        }
+    } catch (err) {
+        console.error('Error loading students:', err);
+        showToast('Network error loading students.', 'error');
+    }
+}
+
+function renderStudentTable(students, year) {
+    var container = document.getElementById('studentsYear' + year);
+    if (students.length === 0) {
+        container.innerHTML = '<div class="text-center text-muted py-4">' +
+            '<i class="bi bi-person-x" style="font-size:2rem;opacity:.3;"></i>' +
+            '<p class="mt-2 mb-0">No students found for Year ' + year + '</p></div>';
+        return;
+    }
+
+    var html = '<table class="table table-hover mb-0">' +
+        '<thead><tr>' +
+        '<th>#</th><th>Name</th><th>Reg No</th><th>Phone</th><th>Year</th><th>Branch</th><th>Section</th><th>Coordinator</th>' +
+        '</tr></thead><tbody>';
+
+    for (var i = 0; i < students.length; i++) {
+        var s = students[i];
+        var coordBadge = s.isCoordinator
+            ? '<span class="badge bg-success"><i class="bi bi-star-fill me-1"></i>Coordinator</span>'
+            : '<span class="badge bg-secondary">Student</span>';
+        var coordBtn = s.isCoordinator
+            ? '<button class="btn btn-sm btn-outline-danger" data-action="toggle-coordinator" data-id="' + s._id + '">' +
+            '<i class="bi bi-x-circle me-1"></i>Remove</button>'
+            : '<button class="btn btn-sm btn-outline-success" data-action="toggle-coordinator" data-id="' + s._id + '">' +
+            '<i class="bi bi-star me-1"></i>Appoint</button>';
+
+        html += '<tr>' +
+            '<td>' + (i + 1) + '</td>' +
+            '<td><strong>' + (s.name || '—') + '</strong></td>' +
+            '<td><code>' + (s.registrationNumber || '—') + '</code></td>' +
+            '<td>' + (s.phone || '—') + '</td>' +
+            '<td>' + (s.year || '—') + '</td>' +
+            '<td>' + (s.branch || '—') + '</td>' +
+            '<td>' + (s.section || '—') + '</td>' +
+            '<td>' + coordBadge + ' ' + coordBtn + '</td>' +
+            '</tr>';
+    }
+
+    html += '</tbody></table>';
+    container.innerHTML = html;
+}
+
+async function toggleCoordinator(studentId) {
+    try {
+        var res = await fetch(API + '/admin/toggle-coordinator/' + studentId, {
+            method: 'POST',
+            headers: authHeaders()
+        });
+        var data = await res.json();
+        if (res.ok) {
+            showToast(data.message, 'success');
+            loadMyStudents();
+        } else {
+            showToast(data.message || 'Error toggling coordinator.', 'error');
         }
     } catch (err) {
         showToast('Network error.', 'error');

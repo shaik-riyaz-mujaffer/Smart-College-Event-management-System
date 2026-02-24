@@ -11,7 +11,7 @@ const generateToken = (id) => {
 // POST /api/auth/register
 router.post('/register', async (req, res) => {
     try {
-        const { name, email, password, role, registrationNumber, phone, branch, year, section } = req.body;
+        const { name, email, password, role, registrationNumber, phone, branch, year, section, adminBranch } = req.body;
 
         // ── Basic required-field validation ──
         if (!name || !email || !password) {
@@ -67,6 +67,8 @@ router.post('/register', async (req, res) => {
             if (branch) userData.branch = branch.toUpperCase();
             if (year) userData.year = Number(year);
             if (section) userData.section = section.toUpperCase();
+        } else {
+            if (adminBranch) userData.adminBranch = adminBranch.toUpperCase();
         }
 
         const user = await User.create(userData);
