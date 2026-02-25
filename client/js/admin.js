@@ -30,7 +30,6 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('navAdminName').textContent = user.name || 'Admin';
     loadProfile();
     loadMyEvents();
-    loadPaymentQueue();
 
     document.getElementById('logoutBtn').addEventListener('click', function () {
         localStorage.removeItem('user');
@@ -56,9 +55,10 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    // Refresh queue on modal open
-    document.getElementById('paymentQueueModal').addEventListener('show.bs.modal', function () {
-        loadPaymentQueue();
+
+    // Refresh past events on modal open
+    document.getElementById('pastEventsModal').addEventListener('show.bs.modal', function () {
+        loadPastEvents();
     });
 
     // Refresh students on modal open
@@ -75,13 +75,13 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    // Poll payment queue every 15 seconds
-    setInterval(loadPaymentQueue, 15000);
+
 
     // ── Event Delegation for Edit & Delete buttons ──
     document.getElementById('myEventsList').addEventListener('click', function (e) {
         var editBtn = e.target.closest('[data-action="edit"]');
         var deleteBtn = e.target.closest('[data-action="delete"]');
+        var pqBtn = e.target.closest('[data-action="payment-queue"]');
 
         if (editBtn) {
             e.preventDefault();
@@ -95,6 +95,22 @@ document.addEventListener('DOMContentLoaded', function () {
             e.stopPropagation();
             var eventId = deleteBtn.getAttribute('data-id');
             deleteEvent(eventId);
+        }
+
+        if (pqBtn) {
+            e.preventDefault();
+            e.stopPropagation();
+            openEventPaymentQueue(pqBtn.getAttribute('data-id'), pqBtn.getAttribute('data-title'));
+        }
+    });
+
+    // Past events delegation (edit only, no delete)
+    document.getElementById('pastEventsList').addEventListener('click', function (e) {
+        var editBtn = e.target.closest('[data-action="edit"]');
+        if (editBtn) {
+            e.preventDefault();
+            e.stopPropagation();
+            openEditModal(editBtn.getAttribute('data-id'));
         }
     });
 });
@@ -311,10 +327,11 @@ async function loadMyEvents() {
         var allEvents = await res.json();
         var user = getUser();
 
+        // Only show upcoming events in main section
         var myEvents = allEvents.filter(function (ev) {
             if (!ev.createdBy) return false;
             var creatorId = ev.createdBy._id || ev.createdBy;
-            return creatorId === user._id;
+            return creatorId === user._id && new Date(ev.date) > new Date();
         });
 
         document.getElementById('eventCount').textContent = myEvents.length;
@@ -323,11 +340,11 @@ async function loadMyEvents() {
         if (myEvents.length === 0) {
             container.innerHTML = '<div class="text-center text-muted py-5">' +
                 '<i class="bi bi-calendar-x" style="font-size:2.5rem;opacity:.3;"></i>' +
-                '<p class="mt-2 mb-0">No events posted yet. Click <strong>"Post New Event"</strong> to get started!</p></div>';
+                '<p class="mt-2 mb-0">No upcoming events. Click <strong>"Post New Event"</strong> to get started!</p></div>';
             return;
         }
 
-        var html = '';
+        var html = '<div class="row g-3">';
         for (var i = 0; i < myEvents.length; i++) {
             var ev = myEvents[i];
             var date = new Date(ev.date);
@@ -338,27 +355,27 @@ async function loadMyEvents() {
             var isUpcoming = date > new Date();
             var bannerHtml = ev.banner ? '<img src="' + ev.banner + '" class="event-card-banner" alt="Banner">' : '';
 
-            html += '<div class="admin-event-item">' +
+            html += '<div class="col-md-6">' +
+                '<div class="admin-event-item h-100 d-flex flex-column">' +
                 bannerHtml +
-                '<div class="admin-event-body">' +
-                '<div class="d-flex justify-content-between align-items-start">' +
-                '<div class="flex-grow-1">' +
+                '<div class="admin-event-body d-flex flex-column flex-grow-1">' +
                 '<h6 class="mb-1 fw-bold">' + ev.title + '</h6>' +
                 '<p class="text-muted small mb-2" style="line-height:1.4;">' +
-                (ev.description ? ev.description.substring(0, 120) : '') +
-                (ev.description && ev.description.length > 120 ? '...' : '') + '</p>' +
+                (ev.description ? ev.description.substring(0, 100) : '') +
+                (ev.description && ev.description.length > 100 ? '...' : '') + '</p>' +
                 '<div class="d-flex flex-wrap gap-2 mb-2">' +
                 '<span class="event-meta-pill"><i class="bi bi-geo-alt"></i> ' + ev.venue + '</span>' +
                 '<span class="event-meta-pill"><i class="bi bi-calendar3"></i> ' + dateStr + '</span>' +
                 '<span class="event-meta-pill"><i class="bi bi-clock"></i> ' + timeStr + '</span>' +
                 '</div>' +
-                '<div class="d-flex gap-2">' +
+                '<div class="d-flex flex-wrap gap-2 mb-3">' +
                 '<span class="badge ' + (isFree ? 'bg-success' : 'bg-warning text-dark') + '">' + (isFree ? '✨ Free' : '₹' + ev.registrationFee) + '</span>' +
                 '<span class="badge bg-light text-dark border"><i class="bi bi-people-fill me-1"></i>' + regCount + ' registered</span>' +
                 '<span class="badge ' + (isUpcoming ? 'bg-primary' : 'bg-secondary') + '">' + (isUpcoming ? '📅 Upcoming' : '✓ Past') + '</span>' +
                 '</div>' +
-                '</div>' +
-                '<div class="d-flex flex-column gap-2 ms-3">' +
+                '<div class="d-flex flex-wrap gap-2 mt-auto">' +
+                (!isFree ? '<button class="btn btn-sm btn-warning" data-action="payment-queue" data-id="' + ev._id + '" data-title="' + ev.title.replace(/"/g, '&amp;quot;') + '" title="Payment Queue">' +
+                    '<i class="bi bi-hourglass-split me-1"></i>Payment Queue</button>' : '') +
                 '<button class="btn btn-sm btn-outline-primary" data-action="edit" data-id="' + ev._id + '" title="Edit Event">' +
                 '<i class="bi bi-pencil-fill me-1"></i>Edit</button>' +
                 '<button class="btn btn-sm btn-outline-danger" data-action="delete" data-id="' + ev._id + '" title="Delete Event">' +
@@ -366,10 +383,77 @@ async function loadMyEvents() {
                 '</div>' +
                 '</div></div></div>';
         }
+        html += '</div>';
 
         container.innerHTML = html;
     } catch (err) {
         console.error('Error loading events:', err);
+    }
+}
+
+// ═══════════════════════════════════════════
+// ── PAST EVENTS LIST ──
+// ═══════════════════════════════════════════
+async function loadPastEvents() {
+    try {
+        var res = await fetch(API + '/events');
+        var allEvents = await res.json();
+        var user = getUser();
+
+        var pastEvents = allEvents.filter(function (ev) {
+            if (!ev.createdBy) return false;
+            var creatorId = ev.createdBy._id || ev.createdBy;
+            return creatorId === user._id && new Date(ev.date) <= new Date();
+        });
+
+        var container = document.getElementById('pastEventsList');
+
+        if (pastEvents.length === 0) {
+            container.innerHTML = '<div class="text-center text-muted py-5">' +
+                '<i class="bi bi-calendar-check" style="font-size:2.5rem;opacity:.3;"></i>' +
+                '<p class="mt-2 mb-0">No past events found.</p></div>';
+            return;
+        }
+
+        var html = '<div class="row g-3">';
+        for (var i = 0; i < pastEvents.length; i++) {
+            var ev = pastEvents[i];
+            var date = new Date(ev.date);
+            var dateStr = date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+            var timeStr = date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+            var isFree = !ev.registrationFee || ev.registrationFee === 0;
+            var regCount = ev.registrations || 0;
+            var bannerHtml = ev.banner ? '<img src="' + ev.banner + '" class="event-card-banner" alt="Banner">' : '';
+
+            html += '<div class="col-md-6">' +
+                '<div class="admin-event-item h-100 d-flex flex-column" style="opacity:.85;">' +
+                bannerHtml +
+                '<div class="admin-event-body d-flex flex-column flex-grow-1">' +
+                '<h6 class="mb-1 fw-bold">' + ev.title + '</h6>' +
+                '<p class="text-muted small mb-2" style="line-height:1.4;">' +
+                (ev.description ? ev.description.substring(0, 100) : '') +
+                (ev.description && ev.description.length > 100 ? '...' : '') + '</p>' +
+                '<div class="d-flex flex-wrap gap-2 mb-2">' +
+                '<span class="event-meta-pill"><i class="bi bi-geo-alt"></i> ' + ev.venue + '</span>' +
+                '<span class="event-meta-pill"><i class="bi bi-calendar3"></i> ' + dateStr + '</span>' +
+                '<span class="event-meta-pill"><i class="bi bi-clock"></i> ' + timeStr + '</span>' +
+                '</div>' +
+                '<div class="d-flex flex-wrap gap-2 mb-3">' +
+                '<span class="badge ' + (isFree ? 'bg-success' : 'bg-warning text-dark') + '">' + (isFree ? '✨ Free' : '₹' + ev.registrationFee) + '</span>' +
+                '<span class="badge bg-light text-dark border"><i class="bi bi-people-fill me-1"></i>' + regCount + ' registered</span>' +
+                '<span class="badge bg-secondary">✓ Completed</span>' +
+                '</div>' +
+                '<div class="d-flex flex-wrap gap-2 mt-auto">' +
+                '<button class="btn btn-sm btn-outline-primary" data-action="edit" data-id="' + ev._id + '" title="Edit Event">' +
+                '<i class="bi bi-pencil-fill me-1"></i>Edit</button>' +
+                '</div>' +
+                '</div></div></div>';
+        }
+        html += '</div>';
+
+        container.innerHTML = html;
+    } catch (err) {
+        console.error('Error loading past events:', err);
     }
 }
 
@@ -479,41 +563,45 @@ async function deleteEvent(id) {
 }
 
 // ═══════════════════════════════════════════
-// ── PAYMENT QUEUE ──
+// ── PAYMENT QUEUE (PER-EVENT) ──
 // ═══════════════════════════════════════════
-async function loadPaymentQueue() {
+var currentPqEventId = null;
+
+function openEventPaymentQueue(eventId, eventTitle) {
+    currentPqEventId = eventId;
+    // Update modal title
+    var modalTitle = document.querySelector('#paymentQueueModal .modal-title');
+    modalTitle.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Payment Queue — ' + (eventTitle || 'Event');
+    loadPaymentQueue(eventId);
+    var modal = new bootstrap.Modal(document.getElementById('paymentQueueModal'));
+    modal.show();
+}
+
+async function loadPaymentQueue(eventId) {
     try {
-        var res = await fetch(API + '/admin/payment-queue', { headers: authHeaders(), cache: 'no-store' });
+        var url = API + '/admin/payment-queue';
+        if (eventId) url += '?eventId=' + encodeURIComponent(eventId);
+        var res = await fetch(url, { headers: authHeaders(), cache: 'no-store' });
         if (!res.ok) return;
         var queue = await res.json();
-
-        // Update badge
-        var badge = document.getElementById('pqBadge');
-        if (queue.length > 0) {
-            badge.textContent = queue.length;
-            badge.classList.remove('d-none');
-        } else {
-            badge.classList.add('d-none');
-        }
 
         var container = document.getElementById('paymentQueueContent');
         if (queue.length === 0) {
             container.innerHTML = '<div class="text-center text-muted py-5">' +
                 '<i class="bi bi-inbox" style="font-size:2.5rem;opacity:.3;"></i>' +
-                '<p class="mt-2 mb-0">No payments awaiting approval.</p></div>';
+                '<p class="mt-2 mb-0">No payments awaiting approval for this event.</p></div>';
             return;
         }
 
         var html = '<div class="table-responsive"><table class="table table-hover mb-0 pq-table">' +
             '<thead><tr>' +
             '<th>Student</th><th>Reg No</th><th>Email</th><th>Branch</th><th>Section</th>' +
-            '<th>Event</th><th>Transaction ID</th><th>Amount</th><th>Actions</th>' +
+            '<th>Transaction ID</th><th>Amount</th><th>Actions</th>' +
             '</tr></thead><tbody>';
 
         for (var i = 0; i < queue.length; i++) {
             var reg = queue[i];
             var u = reg.user || {};
-            var ev = reg.event || {};
             var txnId = reg.upiTxnId || reg.transactionId || '—';
             var amount = reg.amountPaid ? '₹' + reg.amountPaid : '—';
             var date = new Date(reg.createdAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
@@ -524,7 +612,6 @@ async function loadPaymentQueue() {
                 '<td>' + (u.email || '—') + '</td>' +
                 '<td>' + (u.branch || '—') + '</td>' +
                 '<td>' + (u.section || '—') + '</td>' +
-                '<td><strong>' + (ev.title || '—') + '</strong></td>' +
                 '<td><code class="text-primary fw-bold">' + txnId + '</code></td>' +
                 '<td>' + amount + '</td>' +
                 '<td class="text-nowrap">' +
@@ -552,7 +639,7 @@ async function approvePayment(regId) {
         var data = await res.json();
         if (res.ok) {
             showToast('✅ ' + data.message, 'success');
-            loadPaymentQueue();
+            loadPaymentQueue(currentPqEventId);
         } else {
             showToast(data.message || 'Error approving payment.', 'error');
         }
@@ -571,7 +658,7 @@ async function rejectPayment(regId) {
         var data = await res.json();
         if (res.ok) {
             showToast('Payment rejected.', 'success');
-            loadPaymentQueue();
+            loadPaymentQueue(currentPqEventId);
         } else {
             showToast(data.message || 'Error rejecting payment.', 'error');
         }

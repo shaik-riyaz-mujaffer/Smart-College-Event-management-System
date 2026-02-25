@@ -91,7 +91,11 @@ router.get('/export/:eventId', verifyToken, isAdmin, async (req, res) => {
 // GET /api/admin/payment-queue
 router.get('/payment-queue', verifyToken, isAdmin, async (req, res) => {
     try {
-        const queue = await Registration.find({ paymentStatus: 'awaiting_approval' })
+        const filter = { paymentStatus: 'awaiting_approval' };
+        if (req.query.eventId) {
+            filter.event = req.query.eventId;
+        }
+        const queue = await Registration.find(filter)
             .populate('user', 'name email registrationNumber branch section')
             .populate('event', 'title registrationFee')
             .sort({ createdAt: -1 });

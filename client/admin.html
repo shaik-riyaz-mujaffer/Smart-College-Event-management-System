@@ -24,23 +24,26 @@
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="adminNav">
-                <ul class="navbar-nav me-auto ms-3 align-items-center">
+                <ul class="navbar-nav ms-auto align-items-center gap-2">
+                    <!-- Past Events -->
                     <li class="nav-item">
-                        <button class="btn btn-sm btn-warning fw-bold position-relative" id="paymentQueueBtn"
-                            data-bs-toggle="modal" data-bs-target="#paymentQueueModal">
-                            <i class="bi bi-hourglass-split me-1"></i> Payment Queue
-                            <span
-                                class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none"
-                                id="pqBadge">0</span>
+                        <button class="btn btn-sm btn-secondary fw-bold" id="pastEventsBtn" data-bs-toggle="modal"
+                            data-bs-target="#pastEventsModal">
+                            <i class="bi bi-clock-history me-1"></i> Past Events
                         </button>
                     </li>
-                </ul>
-                <ul class="navbar-nav ms-auto align-items-center gap-2">
                     <!-- My Students -->
                     <li class="nav-item">
                         <button class="btn btn-sm btn-info fw-bold" id="myStudentsBtn" data-bs-toggle="modal"
                             data-bs-target="#myStudentsModal">
                             <i class="bi bi-people-fill me-1"></i> My Students
+                        </button>
+                    </li>
+                    <!-- Post New Event -->
+                    <li class="nav-item">
+                        <button class="btn btn-sm btn-gradient fw-bold" data-bs-toggle="modal"
+                            data-bs-target="#postEventModal">
+                            <i class="bi bi-plus-lg me-1"></i> Post New Event
                         </button>
                     </li>
                     <!-- Admin Name + Edit Profile (embedded) -->
@@ -348,9 +351,6 @@
                             <span>My Events</span>
                             <span class="badge bg-primary ms-2" id="eventCount">0</span>
                         </div>
-                        <button class="btn btn-gradient btn-sm" data-bs-toggle="modal" data-bs-target="#postEventModal">
-                            <i class="bi bi-plus-lg me-1"></i> Post New Event
-                        </button>
                     </div>
                     <div id="myEventsList">
                         <div class="text-center text-muted py-5">
@@ -431,6 +431,29 @@
                         </div>
                         <div class="tab-pane fade" id="year4Pane" role="tabpanel">
                             <div id="studentsYear4" class="table-responsive"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!-- Past Events Modal                          -->
+    <!-- ═══════════════════════════════════════════ -->
+    <div class="modal fade" id="pastEventsModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable">
+            <div class="modal-content" style="border:none;border-radius:16px;overflow:hidden;">
+                <div class="modal-header"
+                    style="background:linear-gradient(135deg,#64748b,#475569);color:#fff;border:none;">
+                    <h5 class="modal-title"><i class="bi bi-clock-history me-2"></i>Past Events</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-3">
+                    <div id="pastEventsList">
+                        <div class="text-center text-muted py-5">
+                            <i class="bi bi-calendar-check" style="font-size:2.5rem;opacity:.3;"></i>
+                            <p class="mt-2 mb-0">No past events found.</p>
                         </div>
                     </div>
                 </div>

@@ -202,6 +202,10 @@ router.delete('/:id', verifyToken, isAdmin, async (req, res) => {
         if (!event) {
             return res.status(404).json({ message: 'Event not found.' });
         }
+        // Block deletion of completed (past) events
+        if (new Date(event.date) <= new Date()) {
+            return res.status(403).json({ message: 'Cannot delete a completed event.' });
+        }
         // Delete banner file if exists
         if (event.banner) {
             const bannerPath = path.join(__dirname, '..', event.banner);

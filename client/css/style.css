@@ -284,7 +284,7 @@ body {
     padding: .8rem 1rem .8rem 2.7rem !important;
     font-size: .92rem;
     font-weight: 500;
-    background: rgba(255, 255, 255, .7);
+    background: #ffffff;
     transition: var(--transition);
     color: var(--dark);
 }
@@ -308,6 +308,15 @@ body {
     appearance: none;
     cursor: pointer;
     padding-right: .8rem;
+    background: #ffffff !important;
+    color: var(--dark) !important;
+}
+
+.modern-select option {
+    background: #ffffff;
+    color: #1e293b;
+    font-weight: 500;
+    padding: .5rem;
 }
 
 .form-hint {
@@ -864,6 +873,17 @@ body {
 .nav-pills .nav-link:not(.active):hover {
     color: #fff !important;
     background: rgba(255, 255, 255, .1);
+}
+
+/* Fix pill tabs inside modals (dark text on white bg) */
+.modal-body .nav-pills .nav-link:not(.active) {
+    color: var(--gray) !important;
+    background: #f1f5f9;
+}
+
+.modal-body .nav-pills .nav-link:not(.active):hover {
+    color: var(--dark) !important;
+    background: #e2e8f0;
 }
 
 /* ===== Misc ===== */
