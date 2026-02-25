@@ -51,6 +51,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Event delegation for Register buttons
     document.getElementById('eventsList').addEventListener('click', function (e) {
+        // Register button
         var btn = e.target.closest('[data-action="register"]');
         if (btn) {
             e.preventDefault();
@@ -60,6 +61,13 @@ document.addEventListener('DOMContentLoaded', function () {
             btn.disabled = true;
             btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Processing...';
             handleRegistration(eventId, fee, btn);
+            return;
+        }
+        // Card click → open detail modal (only for upcoming cards)
+        var card = e.target.closest('.student-event-card[data-event-id]');
+        if (card) {
+            e.preventDefault();
+            openEventDetail(card.getAttribute('data-event-id'));
         }
     });
 
@@ -76,6 +84,24 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // UPI confirm button
     document.getElementById('confirmUpiBtn').addEventListener('click', confirmUpiPayment);
+
+    // Register button inside event detail modal
+    document.getElementById('eventDetailActions').addEventListener('click', function (e) {
+        var btn = e.target.closest('[data-action="register"]');
+        if (btn) {
+            e.preventDefault();
+            e.stopPropagation();
+            var eventId = btn.getAttribute('data-event-id');
+            var fee = Number(btn.getAttribute('data-fee'));
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Processing...';
+            // Close detail modal first
+            var modalEl = document.getElementById('eventDetailModal');
+            var modal = bootstrap.Modal.getInstance(modalEl);
+            if (modal) modal.hide();
+            handleRegistration(eventId, fee, btn);
+        }
+    });
 
     // Auto-refresh every 15s
     pollTimer = setInterval(function () { refreshAll(); }, 15000);
@@ -337,9 +363,11 @@ function buildEventCard(event, isPast) {
 
     // Dim past event cards and make non-clickable
     var cardStyle = isPast ? ' style="opacity:.7;pointer-events:none;cursor:default;filter:grayscale(20%);"' : '';
+    var cardDataAttr = isPast ? '' : ' data-event-id="' + event._id + '"';
+    var cardCursor = isPast ? '' : 'cursor:pointer;';
 
     return '<div class="col-md-6 col-lg-4">' +
-        '<div class="student-event-card"' + cardStyle + '>' +
+        '<div class="student-event-card"' + cardDataAttr + ' style="' + cardCursor + '"' + cardStyle + '>' +
         bannerBlock +
         '<div class="student-event-body">' +
         '<h5 class="student-event-title">' + event.title + '</h5>' +
@@ -359,6 +387,74 @@ function buildEventCard(event, isPast) {
         '</div>' +
         '</div>' +
         '</div>';
+}
+
+// ═══════════════════════════════════════════
+// ── OPEN EVENT DETAIL MODAL ──
+// ═══════════════════════════════════════════
+function openEventDetail(eventId) {
+    var event = null;
+    for (var i = 0; i < allEvents.length; i++) {
+        if (allEvents[i]._id === eventId) {
+            event = allEvents[i];
+            break;
+        }
+    }
+    if (!event) return;
+
+    var dateObj = new Date(event.date);
+    var dateStr = dateObj.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    var timeStr = dateObj.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+    var fee = Number(event.registrationFee) || 0;
+    var isRegistered = event.isRegistered === true;
+
+    // Banner
+    var bannerEl = document.getElementById('eventDetailBanner');
+    if (event.banner) {
+        bannerEl.innerHTML = '<img src="' + window.location.origin + event.banner + '" style="width:100%;height:280px;object-fit:cover;" alt="Banner">';
+        bannerEl.style.display = 'block';
+    } else {
+        bannerEl.innerHTML = '';
+        bannerEl.style.display = 'none';
+    }
+
+    // Title, date, time, venue
+    document.getElementById('eventDetailName').textContent = event.title;
+    document.getElementById('eventDetailDate').textContent = dateStr;
+    document.getElementById('eventDetailTime').textContent = timeStr;
+    document.getElementById('eventDetailVenue').textContent = event.venue;
+
+    // Fee badge
+    if (fee === 0) {
+        document.getElementById('eventDetailFeeBadge').innerHTML = '<span class="badge bg-success px-3 py-2"><i class="bi bi-gift-fill me-1"></i>Free Event</span>';
+    } else {
+        document.getElementById('eventDetailFeeBadge').innerHTML = '<span class="badge bg-warning text-dark px-3 py-2"><i class="bi bi-currency-rupee me-1"></i>Registration Fee: \u20b9' + fee + '</span>';
+    }
+
+    // Posted by
+    if (event.createdBy && event.createdBy.name) {
+        document.getElementById('eventDetailPostedBy').innerHTML = '<i class="bi bi-person-fill me-1"></i>Posted by: <strong>' + event.createdBy.name + '</strong>';
+    } else {
+        document.getElementById('eventDetailPostedBy').innerHTML = '';
+    }
+
+    // Description
+    document.getElementById('eventDetailDesc').textContent = event.description || 'No description available.';
+
+    // Action button
+    var actionsEl = document.getElementById('eventDetailActions');
+    if (isRegistered) {
+        actionsEl.innerHTML = '<button class="btn btn-lg px-5 py-3" style="background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;border:none;border-radius:30px;font-weight:700;font-size:1rem;cursor:default;" disabled>' +
+            '<i class="bi bi-check-circle-fill me-2"></i>Already Registered</button>';
+    } else {
+        actionsEl.innerHTML = '<button class="btn btn-lg px-5 py-3" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border:none;border-radius:30px;font-weight:700;font-size:1rem;box-shadow:0 4px 15px rgba(99,102,241,.3);"' +
+            ' data-action="register" data-event-id="' + event._id + '" data-fee="' + fee + '">' +
+            '<i class="bi bi-lightning-charge-fill me-2"></i>' + (fee > 0 ? 'Register \u00b7 \u20b9' + fee : 'Register Now') + '</button>';
+    }
+
+    // Show modal
+    var modal = new bootstrap.Modal(document.getElementById('eventDetailModal'));
+    modal.show();
 }
 
 // ═══════════════════════════════════════════

@@ -205,6 +205,46 @@
     </div>
 
     <!-- ═══════════════════════════════════════════ -->
+    <!-- Event Detail Modal                        -->
+    <!-- ═══════════════════════════════════════════ -->
+    <div class="modal fade" id="eventDetailModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content" style="border:none;border-radius:18px;overflow:hidden;">
+                <div class="modal-header"
+                    style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border:none;padding:1.25rem 1.5rem;">
+                    <h5 class="modal-title" id="eventDetailTitle">
+                        <i class="bi bi-calendar-event me-2"></i>Event Details
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-0">
+                    <!-- Banner -->
+                    <div id="eventDetailBanner" style="max-height:280px;overflow:hidden;background:#f1f5f9;"></div>
+                    <!-- Body -->
+                    <div class="p-4">
+                        <h4 class="fw-bold mb-2" id="eventDetailName"></h4>
+                        <div class="d-flex flex-wrap gap-3 mb-3" style="font-size:.9rem;">
+                            <span class="text-muted"><i class="bi bi-calendar3 me-1 text-primary"></i> <span
+                                    id="eventDetailDate"></span></span>
+                            <span class="text-muted"><i class="bi bi-clock me-1 text-primary"></i> <span
+                                    id="eventDetailTime"></span></span>
+                            <span class="text-muted"><i class="bi bi-geo-alt-fill me-1 text-primary"></i> <span
+                                    id="eventDetailVenue"></span></span>
+                        </div>
+                        <div class="d-flex flex-wrap gap-2 mb-3">
+                            <span id="eventDetailFeeBadge"></span>
+                            <span id="eventDetailPostedBy" class="text-muted small"></span>
+                        </div>
+                        <hr>
+                        <p id="eventDetailDesc" style="white-space:pre-wrap;color:#334155;line-height:1.7;"></p>
+                        <div class="text-center mt-4" id="eventDetailActions"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════ -->
     <!-- UPI Payment Modal                          -->
     <!-- ═══════════════════════════════════════════ -->
     <div class="modal fade" id="upiPaymentModal" tabindex="-1" data-bs-backdrop="static">
