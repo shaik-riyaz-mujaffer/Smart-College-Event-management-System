@@ -203,20 +203,18 @@ async function saveProfile(e) {
 
 // ═══════════════════════════════════════════
 // ── HELPER: Split events into upcoming and past ──
-// Past = event date + 24 hours has passed
+// Past = event date has passed
 // ═══════════════════════════════════════════
 function splitEvents() {
     var now = new Date();
     var upcoming = [];
     var past = [];
-    var buffer24h = 24 * 60 * 60 * 1000; // 24 hours in ms
 
     for (var i = 0; i < allEvents.length; i++) {
         var event = allEvents[i];
         var eventDate = new Date(event.date);
-        var cutoff = new Date(eventDate.getTime() + buffer24h);
 
-        if (cutoff > now) {
+        if (eventDate > now) {
             upcoming.push(event);
         } else {
             past.push(event);
@@ -337,8 +335,8 @@ function buildEventCard(event, isPast) {
         : '<div class="student-event-banner no-banner"><div class="student-event-date-big">' +
         '<span class="day">' + day + '</span><span class="month">' + month + '</span></div>' + feeBadge + '</div>';
 
-    // Dim past event cards slightly
-    var cardStyle = isPast ? ' style="opacity:.85;"' : '';
+    // Dim past event cards and make non-clickable
+    var cardStyle = isPast ? ' style="opacity:.7;pointer-events:none;cursor:default;filter:grayscale(20%);"' : '';
 
     return '<div class="col-md-6 col-lg-4">' +
         '<div class="student-event-card"' + cardStyle + '>' +

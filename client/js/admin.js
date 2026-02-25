@@ -82,19 +82,18 @@ document.addEventListener('DOMContentLoaded', function () {
         var editBtn = e.target.closest('[data-action="edit"]');
         var deleteBtn = e.target.closest('[data-action="delete"]');
         var pqBtn = e.target.closest('[data-action="payment-queue"]');
+        var regBtn = e.target.closest('[data-action="view-registrations"]');
 
         if (editBtn) {
             e.preventDefault();
             e.stopPropagation();
-            var eventId = editBtn.getAttribute('data-id');
-            openEditModal(eventId);
+            openEditModal(editBtn.getAttribute('data-id'));
         }
 
         if (deleteBtn) {
             e.preventDefault();
             e.stopPropagation();
-            var eventId = deleteBtn.getAttribute('data-id');
-            deleteEvent(eventId);
+            deleteEvent(deleteBtn.getAttribute('data-id'));
         }
 
         if (pqBtn) {
@@ -102,15 +101,27 @@ document.addEventListener('DOMContentLoaded', function () {
             e.stopPropagation();
             openEventPaymentQueue(pqBtn.getAttribute('data-id'), pqBtn.getAttribute('data-title'));
         }
+
+        if (regBtn) {
+            e.preventDefault();
+            e.stopPropagation();
+            openRegistrationsModal(regBtn.getAttribute('data-id'), regBtn.getAttribute('data-title'));
+        }
     });
 
-    // Past events delegation (edit only, no delete)
+    // Past events delegation (edit + view registrations, no delete)
     document.getElementById('pastEventsList').addEventListener('click', function (e) {
         var editBtn = e.target.closest('[data-action="edit"]');
+        var regBtn = e.target.closest('[data-action="view-registrations"]');
         if (editBtn) {
             e.preventDefault();
             e.stopPropagation();
             openEditModal(editBtn.getAttribute('data-id'));
+        }
+        if (regBtn) {
+            e.preventDefault();
+            e.stopPropagation();
+            openRegistrationsModal(regBtn.getAttribute('data-id'), regBtn.getAttribute('data-title'));
         }
     });
 });
@@ -370,7 +381,7 @@ async function loadMyEvents() {
                 '</div>' +
                 '<div class="d-flex flex-wrap gap-2 mb-3">' +
                 '<span class="badge ' + (isFree ? 'bg-success' : 'bg-warning text-dark') + '">' + (isFree ? '✨ Free' : '₹' + ev.registrationFee) + '</span>' +
-                '<span class="badge bg-light text-dark border"><i class="bi bi-people-fill me-1"></i>' + regCount + ' registered</span>' +
+                '<button class="btn btn-sm btn-outline-dark border" data-action="view-registrations" data-id="' + ev._id + '" data-title="' + ev.title.replace(/"/g, '&amp;quot;') + '" style="font-size:.75rem;"><i class="bi bi-people-fill me-1"></i>' + regCount + ' registered</button>' +
                 '<span class="badge ' + (isUpcoming ? 'bg-primary' : 'bg-secondary') + '">' + (isUpcoming ? '📅 Upcoming' : '✓ Past') + '</span>' +
                 '</div>' +
                 '<div class="d-flex flex-wrap gap-2 mt-auto">' +
@@ -440,7 +451,7 @@ async function loadPastEvents() {
                 '</div>' +
                 '<div class="d-flex flex-wrap gap-2 mb-3">' +
                 '<span class="badge ' + (isFree ? 'bg-success' : 'bg-warning text-dark') + '">' + (isFree ? '✨ Free' : '₹' + ev.registrationFee) + '</span>' +
-                '<span class="badge bg-light text-dark border"><i class="bi bi-people-fill me-1"></i>' + regCount + ' registered</span>' +
+                '<button class="btn btn-sm btn-outline-dark border" data-action="view-registrations" data-id="' + ev._id + '" data-title="' + ev.title.replace(/"/g, '&amp;quot;') + '" style="font-size:.75rem;"><i class="bi bi-people-fill me-1"></i>' + regCount + ' registered</button>' +
                 '<span class="badge bg-secondary">✓ Completed</span>' +
                 '</div>' +
                 '<div class="d-flex flex-wrap gap-2 mt-auto">' +
@@ -456,6 +467,113 @@ async function loadPastEvents() {
         console.error('Error loading past events:', err);
     }
 }
+
+// ═══════════════════════════════════════════
+// ── VIEW REGISTRATIONS ──
+// ═══════════════════════════════════════════
+var currentRegEventId = null;
+var currentRegEventTitle = '';
+var currentRegData = [];
+
+function openRegistrationsModal(eventId, eventTitle) {
+    currentRegEventId = eventId;
+    currentRegEventTitle = eventTitle || 'Event';
+    document.getElementById('registrationsModalTitle').innerHTML =
+        '<i class="bi bi-people-fill me-2"></i>Registered Students — ' + currentRegEventTitle;
+    loadRegistrations(eventId);
+    var modal = new bootstrap.Modal(document.getElementById('registrationsModal'));
+    modal.show();
+}
+
+async function loadRegistrations(eventId) {
+    try {
+        var res = await fetch(API + '/admin/event-registrations/' + eventId, { headers: authHeaders() });
+        if (!res.ok) return;
+        var regs = await res.json();
+        currentRegData = regs;
+
+        var container = document.getElementById('registrationsContent');
+        var downloadBtn = document.getElementById('downloadCsvBtn');
+
+        if (regs.length === 0) {
+            container.innerHTML = '<div class="text-center text-muted py-5">' +
+                '<i class="bi bi-people" style="font-size:2.5rem;opacity:.3;"></i>' +
+                '<p class="mt-2 mb-0">No confirmed registrations for this event.</p></div>';
+            downloadBtn.style.display = 'none';
+            return;
+        }
+
+        downloadBtn.style.display = 'inline-block';
+
+        var html = '<div class="table-responsive"><table class="table table-custom table-hover mb-0">' +
+            '<thead><tr>' +
+            '<th>#</th>' +
+            '<th>Name</th>' +
+            '<th>Registration No.</th>' +
+            '<th>Branch</th>' +
+            '<th>Section</th>' +
+            '<th>Year</th>' +
+            '<th>Email</th>' +
+            '</tr></thead><tbody>';
+
+        for (var i = 0; i < regs.length; i++) {
+            var r = regs[i];
+            var u = r.user || {};
+            html += '<tr>' +
+                '<td>' + (i + 1) + '</td>' +
+                '<td>' + (u.name || '-') + '</td>' +
+                '<td>' + (u.registrationNumber || '-') + '</td>' +
+                '<td>' + (u.branch || '-') + '</td>' +
+                '<td>' + (u.section || '-') + '</td>' +
+                '<td>' + (u.year || '-') + '</td>' +
+                '<td>' + (u.email || '-') + '</td>' +
+                '</tr>';
+        }
+
+        html += '</tbody></table></div>';
+        container.innerHTML = html;
+    } catch (err) {
+        console.error('Error loading registrations:', err);
+    }
+}
+
+function downloadRegistrationsCsv() {
+    if (!currentRegData || currentRegData.length === 0) return;
+
+    var headers = ['S.No', 'Name', 'Registration Number', 'Branch', 'Section', 'Year', 'Email', 'Event Name'];
+    var rows = [headers.join(',')];
+
+    for (var i = 0; i < currentRegData.length; i++) {
+        var r = currentRegData[i];
+        var u = r.user || {};
+        var eventName = (r.event && r.event.title) ? r.event.title : currentRegEventTitle;
+        var row = [
+            i + 1,
+            '"' + (u.name || '').replace(/"/g, '""') + '"',
+            '"' + (u.registrationNumber || '') + '"',
+            '"' + (u.branch || '') + '"',
+            '"' + (u.section || '') + '"',
+            '"' + (u.year || '') + '"',
+            '"' + (u.email || '') + '"',
+            '"' + eventName.replace(/"/g, '""') + '"'
+        ];
+        rows.push(row.join(','));
+    }
+
+    var csv = rows.join('\n');
+    var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = (currentRegEventTitle || 'registrations').replace(/[^a-zA-Z0-9]/g, '_') + '_registrations.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+// Wire download button
+document.getElementById('downloadCsvBtn').addEventListener('click', downloadRegistrationsCsv);
 
 // ═══════════════════════════════════════════
 // ── EDIT EVENT ──

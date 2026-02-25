@@ -105,6 +105,22 @@ router.get('/payment-queue', verifyToken, isAdmin, async (req, res) => {
     }
 });
 
+// GET /api/admin/event-registrations/:eventId — confirmed registrations for an event
+router.get('/event-registrations/:eventId', verifyToken, isAdmin, async (req, res) => {
+    try {
+        const regs = await Registration.find({
+            event: req.params.eventId,
+            paymentStatus: { $in: ['paid', 'free'] }
+        })
+            .populate('user', 'name email registrationNumber branch section year')
+            .populate('event', 'title')
+            .sort({ createdAt: -1 });
+        res.json(regs);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
 // POST /api/admin/approve-payment/:id
 router.post('/approve-payment/:id', verifyToken, isAdmin, async (req, res) => {
     try {

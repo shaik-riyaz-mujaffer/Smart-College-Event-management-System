@@ -197,13 +197,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 payload.year = year;
                 payload.section = section;
             } else {
-                // Admin branch selection
+                // Admin branch selection + branch key
                 const adminBranch = document.getElementById('adminBranch').value;
+                const branchKey = document.getElementById('adminBranchKey').value.trim();
                 if (!adminBranch) {
                     showAlert(alertBox, 'Please select your branch.');
                     return;
                 }
+                if (!branchKey) {
+                    showAlert(alertBox, 'Please enter the branch secret key.');
+                    return;
+                }
                 payload.adminBranch = adminBranch;
+                payload.branchKey = branchKey;
             }
 
             spinner.classList.remove('d-none');

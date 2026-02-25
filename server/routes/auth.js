@@ -11,11 +11,25 @@ const generateToken = (id) => {
 // POST /api/auth/register
 router.post('/register', async (req, res) => {
     try {
-        const { name, email, password, role, registrationNumber, phone, branch, year, section, adminBranch } = req.body;
+        const { name, email, password, role, registrationNumber, phone, branch, year, section, adminBranch, branchKey } = req.body;
 
         // ── Basic required-field validation ──
         if (!name || !email || !password) {
             return res.status(400).json({ message: 'Name, email and password are required.' });
+        }
+
+        // ── Admin branch key validation ──
+        if (role === 'admin') {
+            if (!adminBranch) {
+                return res.status(400).json({ message: 'Branch is required for admin registration.' });
+            }
+            if (!branchKey) {
+                return res.status(400).json({ message: 'Branch secret key is required for admin registration.' });
+            }
+            const expectedKey = process.env['BRANCH_KEY_' + adminBranch.toUpperCase()];
+            if (!expectedKey || branchKey !== expectedKey) {
+                return res.status(403).json({ message: 'Invalid branch key. Please contact the department head for the correct key.' });
+            }
         }
 
         // For students, registrationNumber and phone are mandatory
