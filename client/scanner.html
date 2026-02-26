@@ -96,6 +96,49 @@
         button {
             border-radius: 8px !important;
         }
+
+        /* ── Responsive: Phones (576px) ── */
+        @media (max-width: 576px) {
+            .scanner-container {
+                margin: 20px auto;
+                padding: 12px;
+            }
+
+            .reader-header {
+                padding: 10px;
+                font-size: .9rem;
+            }
+
+            .history-item {
+                padding: 10px 12px;
+                font-size: .85rem;
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 6px;
+            }
+
+            .status-card {
+                border-radius: 12px;
+            }
+        }
+
+        /* ── Responsive: Extra-small phones (480px) ── */
+        @media (max-width: 480px) {
+            .scanner-container {
+                margin: 10px auto;
+                padding: 8px;
+            }
+
+            .reader-header {
+                font-size: .82rem;
+                padding: 8px 10px;
+            }
+
+            .history-item {
+                padding: 8px 10px;
+                font-size: .8rem;
+            }
+        }
     </style>
 </head>
 

@@ -206,10 +206,10 @@ router.post('/reject-payment/:id', verifyToken, isAdmin, async (req, res) => {
             return res.status(400).json({ message: 'This registration is not awaiting approval.' });
         }
 
-        registration.paymentStatus = 'failed';
+        registration.paymentStatus = 'payment_rejected';
         await registration.save();
 
-        res.json({ message: 'Payment rejected.' });
+        res.json({ message: 'Payment rejected. Student can re-enter transaction details.' });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }

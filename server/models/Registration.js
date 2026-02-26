@@ -15,7 +15,7 @@ const registrationSchema = new mongoose.Schema({
     // ── Payment (Razorpay) ──
     paymentStatus: {
         type: String,
-        enum: ['free', 'pending', 'awaiting_approval', 'paid', 'failed'],
+        enum: ['free', 'pending', 'awaiting_approval', 'paid', 'failed', 'payment_rejected'],
         default: 'free'
     },
     razorpayOrderId: { type: String },
@@ -47,7 +47,8 @@ const registrationSchema = new mongoose.Schema({
     transactionId: { type: String },
     upiQrCode: { type: String },
     upiTxnRef: { type: String },  // unique reference sent in UPI QR
-    upiTxnId: { type: String }    // transaction ID from student after payment
+    upiTxnId: { type: String },   // transaction ID from student after payment
+    paymentScreenshot: { type: String }  // path to uploaded payment screenshot
 
 }, { timestamps: true });
 

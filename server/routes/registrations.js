@@ -2,6 +2,9 @@ const express = require('express');
 const router = express.Router();
 const crypto = require('crypto');
 const QRCode = require('qrcode');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 const Registration = require('../models/Registration');
 const Event = require('../models/Event');
 const { verifyToken, isAdmin } = require('../middleware/auth');
@@ -10,6 +13,30 @@ const razorpay = require('../config/razorpay');
 const { generateQrToken } = require('../utils/qrToken');
 const { sendRegistrationEmail } = require('../utils/email');
 const { generateTicketPDF } = require('../utils/pdf');
+
+// ── Multer config for payment screenshot uploads ──
+const uploadsDir = path.join(__dirname, '..', 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+const screenshotStorage = multer.diskStorage({
+    destination: (req, file, cb) => cb(null, uploadsDir),
+    filename: (req, file, cb) => {
+        const uniqueName = `payment_${Date.now()}${path.extname(file.originalname)}`;
+        cb(null, uniqueName);
+    }
+});
+
+const screenshotFilter = (req, file, cb) => {
+    const allowed = /jpeg|jpg|png|gif|webp/;
+    const ext = allowed.test(path.extname(file.originalname).toLowerCase());
+    const mime = allowed.test(file.mimetype);
+    if (ext && mime) cb(null, true);
+    else cb(new Error('Only image files (jpg, png, gif, webp) are allowed.'));
+};
+
+const screenshotUpload = multer({ storage: screenshotStorage, fileFilter: screenshotFilter, limits: { fileSize: 5 * 1024 * 1024 } });
 
 // ─── Helper: generate QR code + token + email for a registration ───
 async function finalizeRegistration(registration, req) {
@@ -146,6 +173,12 @@ router.post('/register-upi', verifyToken, registrationLimiter, async (req, res) 
             if (existing.paymentStatus === 'paid' || existing.paymentStatus === 'free') {
                 return res.status(400).json({ message: 'You have already registered for this event.' });
             }
+            if (existing.paymentStatus === 'awaiting_approval') {
+                return res.status(400).json({ message: 'Your payment is already awaiting approval.' });
+            }
+            if (existing.paymentStatus === 'payment_rejected') {
+                return res.status(400).json({ message: 'Your payment was rejected. Please re-enter your transaction ID in My Registrations.' });
+            }
             // Delete old pending/failed registration
             await Registration.findByIdAndDelete(existing._id);
         }
@@ -197,7 +230,7 @@ router.post('/register-upi', verifyToken, registrationLimiter, async (req, res) 
 // 1c. CONFIRM UPI PAYMENT
 //     Student clicks "I have paid" → marks registration as paid
 // ═══════════════════════════════════════════════════════════════
-router.post('/confirm-upi', verifyToken, async (req, res) => {
+router.post('/confirm-upi', verifyToken, screenshotUpload.single('paymentScreenshot'), async (req, res) => {
     try {
         res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
         const { registrationId, upiTxnId } = req.body;
@@ -215,9 +248,19 @@ router.post('/confirm-upi', verifyToken, async (req, res) => {
             return res.status(400).json({ message: 'Payment already confirmed.' });
         }
 
+        if (registration.paymentStatus === 'awaiting_approval') {
+            return res.status(400).json({ message: 'Payment is already awaiting approval.' });
+        }
+
         // Mark as awaiting admin approval (NOT paid yet)
+        // Allowed from: pending, failed, payment_rejected
         registration.paymentStatus = 'awaiting_approval';
         if (upiTxnId) registration.upiTxnId = upiTxnId;
+
+        // Save screenshot if uploaded
+        if (req.file) {
+            registration.paymentScreenshot = `/uploads/${req.file.filename}`;
+        }
         await registration.save();
 
         // Do NOT generate QR or send email yet — admin must approve first

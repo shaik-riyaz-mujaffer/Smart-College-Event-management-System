@@ -366,7 +366,7 @@ async function loadMyEvents() {
             var isUpcoming = date > new Date();
             var bannerHtml = ev.banner ? '<img src="' + ev.banner + '" class="event-card-banner" alt="Banner">' : '';
 
-            html += '<div class="col-md-6">' +
+            html += '<div class="col-12">' +
                 '<div class="admin-event-item h-100 d-flex flex-column">' +
                 bannerHtml +
                 '<div class="admin-event-body d-flex flex-column flex-grow-1">' +
@@ -436,7 +436,7 @@ async function loadPastEvents() {
             var regCount = ev.registrations || 0;
             var bannerHtml = ev.banner ? '<img src="' + ev.banner + '" class="event-card-banner" alt="Banner">' : '';
 
-            html += '<div class="col-md-6">' +
+            html += '<div class="col-12">' +
                 '<div class="admin-event-item h-100 d-flex flex-column" style="opacity:.85;">' +
                 bannerHtml +
                 '<div class="admin-event-body d-flex flex-column flex-grow-1">' +
@@ -714,7 +714,7 @@ async function loadPaymentQueue(eventId) {
         var html = '<div class="table-responsive"><table class="table table-hover mb-0 pq-table">' +
             '<thead><tr>' +
             '<th>Student</th><th>Reg No</th><th>Email</th><th>Branch</th><th>Section</th>' +
-            '<th>Transaction ID</th><th>Amount</th><th>Actions</th>' +
+            '<th>Transaction ID</th><th>Screenshot</th><th>Amount</th><th>Actions</th>' +
             '</tr></thead><tbody>';
 
         for (var i = 0; i < queue.length; i++) {
@@ -723,6 +723,11 @@ async function loadPaymentQueue(eventId) {
             var txnId = reg.upiTxnId || reg.transactionId || '—';
             var amount = reg.amountPaid ? '₹' + reg.amountPaid : '—';
             var date = new Date(reg.createdAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
+            var screenshotHtml = reg.paymentScreenshot
+                ? '<a href="' + reg.paymentScreenshot + '" target="_blank" title="View Screenshot">' +
+                '<img src="' + reg.paymentScreenshot + '" style="width:50px;height:50px;object-fit:cover;border-radius:6px;border:1px solid #e2e8f0;cursor:pointer;" alt="Screenshot">' +
+                '</a>'
+                : '<span class="text-muted">—</span>';
 
             html += '<tr>' +
                 '<td><strong>' + (u.name || '—') + '</strong><br><small class="text-muted">' + date + '</small></td>' +
@@ -731,6 +736,7 @@ async function loadPaymentQueue(eventId) {
                 '<td>' + (u.branch || '—') + '</td>' +
                 '<td>' + (u.section || '—') + '</td>' +
                 '<td><code class="text-primary fw-bold">' + txnId + '</code></td>' +
+                '<td>' + screenshotHtml + '</td>' +
                 '<td>' + amount + '</td>' +
                 '<td class="text-nowrap">' +
                 '<button class="btn btn-sm btn-success me-1" data-action="approve-pay" data-id="' + reg._id + '">' +

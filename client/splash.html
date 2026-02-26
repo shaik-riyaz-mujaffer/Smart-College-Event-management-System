@@ -343,6 +343,77 @@
         .transition-overlay.active {
             opacity: 1;
         }
+
+        /* ── Responsive: Small phones (576px) ── */
+        @media (max-width: 576px) {
+            .splash-logo {
+                width: 85px;
+                height: 85px;
+                border-radius: 22px;
+            }
+
+            .splash-logo svg {
+                width: 44px;
+                height: 44px;
+            }
+
+            .glow-ring {
+                width: 170px;
+                height: 170px;
+            }
+
+            .splash-title {
+                font-size: 1.8rem;
+                margin-top: 22px;
+            }
+
+            .splash-subtitle {
+                font-size: .85rem;
+                letter-spacing: .1em;
+            }
+
+            .loading-bar-track {
+                width: 130px;
+                margin-top: 28px;
+            }
+        }
+
+        /* ── Responsive: Extra-small phones (480px) ── */
+        @media (max-width: 480px) {
+            body {
+                padding: 12px;
+            }
+
+            .splash-logo {
+                width: 72px;
+                height: 72px;
+                border-radius: 18px;
+            }
+
+            .splash-logo svg {
+                width: 36px;
+                height: 36px;
+            }
+
+            .glow-ring {
+                width: 140px;
+                height: 140px;
+            }
+
+            .splash-title {
+                font-size: 1.5rem;
+                margin-top: 18px;
+            }
+
+            .splash-subtitle {
+                font-size: .75rem;
+            }
+
+            .loading-bar-track {
+                width: 110px;
+                margin-top: 24px;
+            }
+        }
     </style>
 </head>
 

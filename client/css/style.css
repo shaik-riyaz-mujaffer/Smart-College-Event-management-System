@@ -925,35 +925,121 @@ body {
     }
 }
 
-/* ===== Responsive ===== */
+/* ═══════════════════════════════════════════════════════════════════════ */
+/* RESPONSIVE — Tablets & small laptops (max-width: 1024px)              */
+/* Adjusts column counts and modal/offcanvas sizing for mid-size screens */
+/* ═══════════════════════════════════════════════════════════════════════ */
+@media (max-width: 1024px) {
+
+    /* Admin profile offcanvas: allow wider on tablets */
+    .admin-profile-offcanvas {
+        max-width: 80%;
+    }
+
+    /* Modal dialogs: nearly full-width on tablets */
+    .modal-dialog {
+        max-width: 90%;
+        margin: 1rem auto;
+    }
+
+    /* Slightly reduce page header spacing */
+    .page-header {
+        padding: 1.5rem 0 1rem;
+    }
+
+    /* Make stat card numbers slightly smaller */
+    .stat-card .stat-number {
+        font-size: 1.75rem;
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════ */
+/* RESPONSIVE — Tablets & large phones (max-width: 768px)                */
+/* Core mobile breakpoint: stack layouts, shrink elements, full-width    */
+/* form controls, adjust card padding and font sizes                     */
+/* ═══════════════════════════════════════════════════════════════════════ */
 @media (max-width: 768px) {
+
+    /* Auth card: reduce side padding on mobile, remove margin overflow */
     .auth-card {
         margin: .5rem;
         padding: 2rem 1.25rem 1.5rem;
     }
 
+    /* Register card: use full available width on small screens */
     .auth-card.register-card {
         max-width: 100%;
     }
 
+    /* Shrink the brand logo circle on mobile */
     .brand-icon {
         width: 48px;
         height: 48px;
         font-size: 1.3rem;
     }
 
+    /* Reduce brand heading size on mobile */
     .auth-card .brand h2 {
         font-size: 1.35rem;
     }
 
+    /* Dashboard stat numbers: smaller on mobile */
     .stat-card .stat-number {
         font-size: 1.5rem;
     }
 
+    /* Page headers: smaller on mobile */
     .page-header h3 {
         font-size: 1.4rem;
     }
 
+    /* Admin post card: less padding on mobile */
+    .admin-post-card {
+        padding: 1.5rem 1.25rem;
+    }
+
+    /* Admin profile offcanvas: full-width on mobile */
+    .admin-profile-offcanvas {
+        max-width: 100%;
+    }
+
+    /* Event card banners: shorter on mobile */
+    .event-card-banner {
+        height: 100px;
+    }
+
+    /* Modals: nearly full-width on mobile */
+    .modal-dialog {
+        max-width: 95%;
+        margin: .5rem auto;
+    }
+
+    /* Toast notifications: full width on mobile, adjust position */
+    .toast-container {
+        right: .5rem;
+        left: .5rem;
+        top: 1rem;
+    }
+
+    .custom-toast {
+        min-width: unset;
+        width: 100%;
+    }
+
+    /* Tab pills: smaller text, tighter padding on mobile */
+    .nav-pills .nav-link {
+        padding: .5rem .75rem;
+        font-size: .85rem;
+    }
+
+    /* Tables: shrink font for mobile readability */
+    .table-custom th,
+    .table-custom td {
+        font-size: .78rem;
+        padding: .5rem .35rem;
+    }
+
+    /* Decorative background shapes: smaller to prevent overflow */
     .shape-1 {
         width: 200px;
         height: 200px;
@@ -962,6 +1048,256 @@ body {
     .shape-5 {
         width: 150px;
         height: 150px;
+    }
+
+    /* Shrink auth form inputs slightly on mobile */
+    .modern-input {
+        padding: .6rem .85rem;
+        font-size: .9rem;
+    }
+
+    /* Section titles: slightly smaller */
+    .section-title {
+        font-size: 1.1rem;
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════ */
+/* RESPONSIVE — Small phones (max-width: 576px)                          */
+/* Further reduces sizes for compact phone screens (iPhone SE, Galaxy S) */
+/* ═══════════════════════════════════════════════════════════════════════ */
+@media (max-width: 576px) {
+
+    /* Auth card: tighter padding on very small screens */
+    .auth-card {
+        margin: .25rem;
+        padding: 1.5rem 1rem 1.25rem;
+    }
+
+    /* Shrink brand elements further */
+    .brand-icon {
+        width: 42px;
+        height: 42px;
+        font-size: 1.1rem;
+    }
+
+    .auth-card .brand h2 {
+        font-size: 1.15rem;
+    }
+
+    .auth-card .brand p {
+        font-size: .8rem;
+    }
+
+    /* Role toggle text: smaller on small phones */
+    .role-btn {
+        padding: .5rem .5rem;
+        font-size: .8rem;
+    }
+
+    /* Even smaller stat numbers for small phones */
+    .stat-card .stat-number {
+        font-size: 1.25rem;
+    }
+
+    .stat-card {
+        padding: 1rem;
+    }
+
+    .stat-card .stat-icon {
+        width: 40px;
+        height: 40px;
+        font-size: 1.1rem;
+    }
+
+    /* Page header: compact on small phones */
+    .page-header h3 {
+        font-size: 1.2rem;
+    }
+
+    .page-header {
+        padding: 1rem 0 .75rem;
+    }
+
+    /* Content cards: less padding */
+    .content-card {
+        padding: 1rem;
+    }
+
+    /* Navbar brand: smaller text */
+    .navbar-brand {
+        font-size: 1.1rem;
+    }
+
+    /* Event detail elements: adjust for small screens */
+    .event-card .event-header {
+        padding: 1rem;
+    }
+
+    /* Admin event body: tighter */
+    .admin-event-body {
+        padding: .75rem;
+    }
+
+    /* Student event cards: tighter */
+    .student-event-body {
+        padding: .75rem;
+    }
+
+    .student-event-title {
+        font-size: 1rem;
+    }
+
+    .student-event-desc {
+        font-size: .8rem;
+    }
+
+    /* Student event banner: shorter on small phones */
+    .student-event-banner {
+        height: 120px;
+    }
+
+    /* Student registration card: tighter padding */
+    .student-reg-card {
+        padding: 1rem;
+    }
+
+    /* QR block inside registration cards: smaller */
+    .student-qr-block {
+        padding: .75rem;
+    }
+
+    .student-qr-block img {
+        max-width: 130px !important;
+    }
+
+    /* Background shapes: even smaller to prevent horizontal scroll */
+    .shape-1 {
+        width: 150px;
+        height: 150px;
+    }
+
+    .shape-2 {
+        width: 90px;
+        height: 90px;
+    }
+
+    .shape-3 {
+        width: 70px;
+        height: 70px;
+    }
+
+    .shape-4 {
+        width: 80px;
+        height: 80px;
+    }
+
+    .shape-5 {
+        width: 100px;
+        height: 100px;
+    }
+
+    /* Modal bottom margin adjustment */
+    .modal-body {
+        padding: 1rem;
+    }
+
+    /* Payment queue table: smaller text */
+    .pq-table {
+        font-size: .75rem;
+    }
+
+    .pq-table th {
+        font-size: .7rem;
+        padding: .5rem .3rem;
+    }
+
+    .pq-table td {
+        padding: .5rem .3rem;
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════ */
+/* RESPONSIVE — Extra-small phones (max-width: 480px)                    */
+/* Final adjustments for the smallest screens (iPhone SE, small Androids)*/
+/* Hides non-essential decorations and forces full-width buttons         */
+/* ═══════════════════════════════════════════════════════════════════════ */
+@media (max-width: 480px) {
+
+    /* Hide decorative background shapes entirely on tiny screens */
+    .auth-bg-shapes {
+        display: none;
+    }
+
+    /* Auth card: minimal padding */
+    .auth-card {
+        padding: 1.25rem .85rem 1rem;
+        border-radius: 14px;
+    }
+
+    /* Full-width primary buttons on tiny screens */
+    .btn-primary {
+        width: 100%;
+        padding: .65rem 1rem;
+    }
+
+    /* Form controls: slightly smaller font */
+    .form-control,
+    .form-select {
+        font-size: .88rem;
+        padding: .55rem .75rem;
+    }
+
+    /* Navbar: trim padding */
+    .navbar {
+        padding: .5rem 0;
+    }
+
+    .navbar-brand {
+        font-size: 1rem;
+    }
+
+    /* Dashboard stat cards: stack icon and number vertically */
+    .stat-card .stat-number {
+        font-size: 1.1rem;
+    }
+
+    .stat-card .stat-label {
+        font-size: .75rem;
+    }
+
+    /* Event meta pills: wrap text and reduce size */
+    .event-meta-pill {
+        font-size: .7rem;
+        padding: .2rem .45rem;
+    }
+
+    /* Student event footer buttons: full-width stacked */
+    .student-event-footer {
+        flex-direction: column;
+        gap: .4rem;
+        align-items: stretch;
+    }
+
+    .student-event-footer .btn {
+        width: 100%;
+        text-align: center;
+    }
+
+    /* Modal dialog: absolute full width on tiny screens */
+    .modal-dialog {
+        max-width: 100%;
+        margin: .25rem;
+    }
+
+    /* Admin event action buttons: stack vertically */
+    .admin-event-item .d-flex.flex-wrap.gap-2.mt-auto {
+        flex-direction: column;
+    }
+
+    .admin-event-item .d-flex.flex-wrap.gap-2.mt-auto .btn {
+        width: 100%;
+        text-align: center;
     }
 }
 
@@ -1183,8 +1519,8 @@ body {
 /* Event Card Banner & Body */
 .event-card-banner {
     width: 100%;
-    height: 140px;
-    object-fit: cover;
+    height: auto;
+    display: block;
     border-radius: 10px 10px 0 0;
 }
 
@@ -1208,7 +1544,7 @@ body {
     }
 
     .event-card-banner {
-        height: 100px;
+        height: auto;
     }
 }
 

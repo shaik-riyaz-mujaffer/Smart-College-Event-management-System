@@ -15,6 +15,11 @@ function authHeaders() {
     };
 }
 
+function authHeadersOnly() {
+    var user = getUser();
+    return { 'Authorization': 'Bearer ' + (user ? user.token : '') };
+}
+
 // Global State
 var allEvents = [];       // from /api/events/student-view (includes isRegistered per-student)
 var myRegistrations = []; // from /api/registrations/my (detailed, with QR codes)
@@ -71,7 +76,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    // Delegation for retry payment
+    // Delegation for retry payment and resubmit transaction
     document.getElementById('regsList').addEventListener('click', function (e) {
         var btn = e.target.closest('[data-action="retry-payment"]');
         if (btn) {
@@ -79,6 +84,13 @@ document.addEventListener('DOMContentLoaded', function () {
             var eventId = btn.getAttribute('data-event-id');
             var fee = Number(btn.getAttribute('data-fee'));
             handleRegistration(eventId, fee, btn);
+        }
+        // Resubmit transaction ID for rejected payments
+        var resubmitBtn = e.target.closest('[data-action="resubmit-txn"]');
+        if (resubmitBtn) {
+            e.preventDefault();
+            var regId = resubmitBtn.getAttribute('data-reg-id');
+            resubmitTransaction(regId, resubmitBtn);
         }
     });
 
@@ -354,7 +366,7 @@ function buildEventCard(event, isPast) {
 
     var feeInfoLine = fee === 0
         ? '<div class="student-event-fee free-event"><i class="bi bi-gift-fill me-1"></i>Free Event</div>'
-        : '<div class="student-event-fee paid-event"><i class="bi bi-currency-rupee me-1"></i>Registration Fee: <strong>\u20b9' + fee + '</strong></div>';
+        : '<div class="student-event-fee paid-event">Registration Fee: <strong>\u20b9' + fee + '</strong></div>';
 
     var bannerBlock = bannerSrc
         ? '<div class="student-event-banner"><img src="' + bannerSrc + '" alt="' + event.title + '">' + feeBadge + '</div>'
@@ -411,7 +423,7 @@ function openEventDetail(eventId) {
     // Banner
     var bannerEl = document.getElementById('eventDetailBanner');
     if (event.banner) {
-        bannerEl.innerHTML = '<img src="' + window.location.origin + event.banner + '" style="width:100%;height:280px;object-fit:cover;" alt="Banner">';
+        bannerEl.innerHTML = '<img src="' + window.location.origin + event.banner + '" style="width:100%;height:auto;display:block;" alt="Banner">';
         bannerEl.style.display = 'block';
     } else {
         bannerEl.innerHTML = '';
@@ -428,7 +440,7 @@ function openEventDetail(eventId) {
     if (fee === 0) {
         document.getElementById('eventDetailFeeBadge').innerHTML = '<span class="badge bg-success px-3 py-2"><i class="bi bi-gift-fill me-1"></i>Free Event</span>';
     } else {
-        document.getElementById('eventDetailFeeBadge').innerHTML = '<span class="badge bg-warning text-dark px-3 py-2"><i class="bi bi-currency-rupee me-1"></i>Registration Fee: \u20b9' + fee + '</span>';
+        document.getElementById('eventDetailFeeBadge').innerHTML = '<span class="badge bg-warning text-dark px-3 py-2">Registration Fee: \u20b9' + fee + '</span>';
     }
 
     // Posted by
@@ -535,6 +547,27 @@ function renderRegistrations() {
                     '<i class="bi bi-x-circle me-1"></i> Payment failed. ' +
                     '<button class="btn btn-link btn-sm p-0 fw-semibold" data-action="retry-payment" data-event-id="' +
                     event._id + '" data-fee="' + event.registrationFee + '">Try Again</button></div>';
+            } else if (reg.paymentStatus === 'payment_rejected') {
+                statusBadge = '<span class="badge bg-danger"><i class="bi bi-x-circle me-1"></i>Payment Rejected</span>';
+                paymentInfo = '<div class="alert alert-danger py-2 mt-3 mb-0 small" style="border-radius:8px;">' +
+                    '<i class="bi bi-exclamation-triangle-fill me-1"></i> Your transaction ID was incorrect or payment was not received. ' +
+                    'Please re-enter the correct details below or pay again.</div>' +
+                    '<div class="mt-3 p-3" style="background:#fef2f2;border-radius:10px;border:1px solid #fecaca;">' +
+                    '<label class="form-label fw-semibold small mb-1" style="color:#991b1b;">Correct Transaction ID / UTR</label>' +
+                    '<input type="text" class="form-control form-control-sm mb-2" placeholder="Enter correct UTR / Transaction ID" ' +
+                    'id="resubmitTxn_' + reg._id + '" style="border-radius:8px;">' +
+                    '<label class="form-label fw-semibold small mb-1" style="color:#991b1b;"><i class="bi bi-image me-1"></i>Payment Screenshot</label>' +
+                    '<input type="file" class="form-control form-control-sm mb-2" accept="image/*" ' +
+                    'id="resubmitScreenshot_' + reg._id + '" style="border-radius:8px;">' +
+                    '<div class="d-flex gap-2">' +
+                    '<button class="btn btn-sm btn-primary fw-semibold flex-grow-1" data-action="resubmit-txn" data-reg-id="' + reg._id + '" ' +
+                    'style="border-radius:8px;background:linear-gradient(135deg,#6366f1,#8b5cf6);border:none;">' +
+                    '<i class="bi bi-send-fill me-1"></i>Re-submit</button>' +
+                    '<button class="btn btn-sm btn-outline-warning fw-semibold" data-action="retry-payment" data-event-id="' +
+                    event._id + '" data-fee="' + event.registrationFee + '" ' +
+                    'style="border-radius:8px;">' +
+                    '<i class="bi bi-arrow-repeat me-1"></i>Pay Again</button>' +
+                    '</div></div>';
             }
 
             html += '<div class="col-md-6 mb-4">' +
@@ -709,13 +742,20 @@ async function confirmUpiPayment() {
     btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Verifying...';
 
     try {
+        var formData = new FormData();
+        formData.append('registrationId', registrationId);
+        formData.append('upiTxnId', upiTxnId);
+
+        // Attach screenshot if provided
+        var screenshotInput = document.getElementById('upiScreenshotInput');
+        if (screenshotInput && screenshotInput.files[0]) {
+            formData.append('paymentScreenshot', screenshotInput.files[0]);
+        }
+
         var res = await fetch(API + '/registrations/confirm-upi', {
             method: 'POST',
-            headers: authHeaders(),
-            body: JSON.stringify({
-                registrationId: registrationId,
-                upiTxnId: upiTxnId
-            }),
+            headers: authHeadersOnly(),
+            body: formData,
             cache: 'no-store'
         });
         var data = await res.json();
@@ -748,6 +788,52 @@ function markEventRegistered(eventId) {
             allEvents[i].isRegistered = true;
             break;
         }
+    }
+}
+
+// ── Resubmit Transaction ID for rejected payments ──
+async function resubmitTransaction(registrationId, buttonElem) {
+    var input = document.getElementById('resubmitTxn_' + registrationId);
+    var txnId = input ? input.value.trim() : '';
+
+    if (!txnId) {
+        showToast('Please enter the correct UTR/Transaction ID.', 'error');
+        return;
+    }
+
+    buttonElem.disabled = true;
+    buttonElem.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Submitting...';
+
+    try {
+        var formData = new FormData();
+        formData.append('registrationId', registrationId);
+        formData.append('upiTxnId', txnId);
+
+        // Attach screenshot if provided
+        var screenshotInput = document.getElementById('resubmitScreenshot_' + registrationId);
+        if (screenshotInput && screenshotInput.files[0]) {
+            formData.append('paymentScreenshot', screenshotInput.files[0]);
+        }
+
+        var res = await fetch(API + '/registrations/confirm-upi', {
+            method: 'POST',
+            headers: authHeadersOnly(),
+            body: formData,
+            cache: 'no-store'
+        });
+        var data = await res.json();
+
+        if (res.ok) {
+            showToast('Transaction ID re-submitted! Awaiting admin approval.', 'success');
+            refreshAll();
+        } else {
+            showToast(data.message || 'Failed to re-submit. Please try again.', 'error');
+        }
+    } catch (error) {
+        showToast('Network error. Please try again.', 'error');
+    } finally {
+        buttonElem.disabled = false;
+        buttonElem.innerHTML = '<i class="bi bi-send-fill me-1"></i>Re-submit';
     }
 }
 

@@ -208,7 +208,7 @@
     <!-- Event Detail Modal                        -->
     <!-- ═══════════════════════════════════════════ -->
     <div class="modal fade" id="eventDetailModal" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
             <div class="modal-content" style="border:none;border-radius:18px;overflow:hidden;">
                 <div class="modal-header"
                     style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border:none;padding:1.25rem 1.5rem;">
@@ -219,7 +219,7 @@
                 </div>
                 <div class="modal-body p-0">
                     <!-- Banner -->
-                    <div id="eventDetailBanner" style="max-height:280px;overflow:hidden;background:#f1f5f9;"></div>
+                    <div id="eventDetailBanner" style="background:#f1f5f9;"></div>
                     <!-- Body -->
                     <div class="p-4">
                         <h4 class="fw-bold mb-2" id="eventDetailName"></h4>
@@ -278,6 +278,12 @@
                     <div class="mb-3">
                         <input type="text" class="form-control" id="upiTxnIdInput"
                             placeholder="Enter UTR / Transaction ID (from your UPI app)" style="border-radius:10px;">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold text-muted"><i class="bi bi-image me-1"></i>Payment
+                            Screenshot (optional)</label>
+                        <input type="file" class="form-control form-control-sm" id="upiScreenshotInput" accept="image/*"
+                            style="border-radius:10px;">
                     </div>
                     <input type="hidden" id="upiRegistrationId">
                     <button class="btn btn-lg w-100 fw-bold" id="confirmUpiBtn"
