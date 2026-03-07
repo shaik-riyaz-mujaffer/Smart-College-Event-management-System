@@ -7,6 +7,7 @@ const QRCode = require('qrcode');
 const Event = require('../models/Event');
 const Registration = require('../models/Registration');
 const { verifyToken, isAdmin } = require('../middleware/auth');
+const { sendNewEventNotification } = require('../utils/email');
 
 // ── Multer config for banner uploads ──────────────
 const uploadsDir = path.join(__dirname, '..', 'uploads');
@@ -135,6 +136,17 @@ router.post('/', verifyToken, isAdmin, upload.single('banner'), async (req, res)
         }
 
         const event = await Event.create(eventData);
+
+        // Fire-and-forget: notify all branch-matched students via email
+        sendNewEventNotification({
+            title: event.title,
+            description: event.description,
+            date: event.date,
+            venue: event.venue,
+            registrationFee: event.registrationFee,
+            targetBranch: event.targetBranch
+        }).catch(err => console.error('[Email] Notification error:', err.message));
+
         res.status(201).json(event);
     } catch (error) {
         res.status(500).json({ message: error.message });
