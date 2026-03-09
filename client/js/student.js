@@ -1,7 +1,7 @@
 // ===== Student Dashboard JavaScript =====
 // Fixed: per-student registration state, no cross-student/cross-event pollution
 
-var API = window.location.origin + '/api';
+var API = 'https://smart-college-event-management-system.onrender.com/api';
 
 function getUser() {
     return JSON.parse(localStorage.getItem('user'));
@@ -37,6 +37,12 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     document.getElementById('userName').textContent = user.name || 'Student';
+
+    // Show scanner button if student is coordinator
+    if (user.isCoordinator) {
+        var scanItem = document.getElementById('scannerNavItem');
+        if (scanItem) scanItem.style.display = '';
+    }
 
     loadProfile();
 
@@ -176,6 +182,18 @@ async function loadProfile() {
         document.getElementById('profBranch').value = (user.branch || '').toUpperCase();
         document.getElementById('profYear').value = user.year || '';
         document.getElementById('profSection').value = (user.section || '').toUpperCase();
+
+        // Sync coordinator status from server → localStorage
+        var storedUser = getUser();
+        if (storedUser && storedUser.isCoordinator !== user.isCoordinator) {
+            storedUser.isCoordinator = user.isCoordinator;
+            localStorage.setItem('user', JSON.stringify(storedUser));
+        }
+        // Show/hide scanner button based on latest status
+        var scanItem = document.getElementById('scannerNavItem');
+        if (scanItem) {
+            scanItem.style.display = user.isCoordinator ? '' : 'none';
+        }
 
         // Lock phone and branch if student has registrations
         profileLocked = user.hasRegistered === true;

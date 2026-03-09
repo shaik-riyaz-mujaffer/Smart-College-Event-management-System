@@ -4,6 +4,7 @@ const QRCode = require('qrcode');
 const Event = require('../models/Event');
 const Registration = require('../models/Registration');
 const User = require('../models/User');
+const EventCoordinator = require('../models/EventCoordinator');
 const { verifyToken, isAdmin } = require('../middleware/auth');
 const { generateQrToken } = require('../utils/qrToken');
 const { sendRegistrationEmail } = require('../utils/email');
@@ -268,6 +269,101 @@ router.post('/toggle-coordinator/:id', verifyToken, isAdmin, async (req, res) =>
                 : `${student.name} removed from coordinator role.`,
             isCoordinator: student.isCoordinator
         });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
+// ═══════════════════════════════════════════════════════════════
+// EVENT-SPECIFIC COORDINATOR MANAGEMENT
+// ═══════════════════════════════════════════════════════════════
+
+// GET /api/admin/event-coordinators/:eventId — list coordinators for an event
+router.get('/event-coordinators/:eventId', verifyToken, isAdmin, async (req, res) => {
+    try {
+        const coordinators = await EventCoordinator.find({ event: req.params.eventId })
+            .populate('user', 'name registrationNumber phone year branch section')
+            .sort({ createdAt: -1 });
+
+        res.json(coordinators.map(c => c.user).filter(Boolean));
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
+// POST /api/admin/event-coordinator/:eventId/:studentId — assign coordinator
+router.post('/event-coordinator/:eventId/:studentId', verifyToken, isAdmin, async (req, res) => {
+    try {
+        const event = await Event.findById(req.params.eventId);
+        if (!event) {
+            return res.status(404).json({ message: 'Event not found.' });
+        }
+
+        const student = await User.findById(req.params.studentId);
+        if (!student || student.role !== 'student') {
+            return res.status(404).json({ message: 'Student not found.' });
+        }
+
+        // Create event-coordinator link
+        await EventCoordinator.create({
+            event: req.params.eventId,
+            user: req.params.studentId
+        });
+
+        // Also set global isCoordinator flag so they can access scanner
+        if (!student.isCoordinator) {
+            student.isCoordinator = true;
+            await student.save();
+        }
+
+        res.json({
+            message: `${student.name} assigned as coordinator for "${event.title}".`
+        });
+    } catch (error) {
+        if (error.code === 11000) {
+            return res.status(400).json({ message: 'Student is already a coordinator for this event.' });
+        }
+        res.status(500).json({ message: error.message });
+    }
+});
+
+// DELETE /api/admin/event-coordinator/:eventId/:studentId — remove coordinator
+router.delete('/event-coordinator/:eventId/:studentId', verifyToken, isAdmin, async (req, res) => {
+    try {
+        const removed = await EventCoordinator.findOneAndDelete({
+            event: req.params.eventId,
+            user: req.params.studentId
+        });
+
+        if (!removed) {
+            return res.status(404).json({ message: 'Coordinator assignment not found.' });
+        }
+
+        // Check if student has any other coordinator assignments
+        const otherAssignments = await EventCoordinator.countDocuments({
+            user: req.params.studentId
+        });
+
+        // If no more assignments, remove global coordinator flag
+        if (otherAssignments === 0) {
+            await User.findByIdAndUpdate(req.params.studentId, { isCoordinator: false });
+        }
+
+        const student = await User.findById(req.params.studentId).select('name');
+        res.json({
+            message: `${student ? student.name : 'Student'} removed as coordinator.`
+        });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
+// GET /api/admin/my-coordinated-events — events where logged-in student is coordinator
+router.get('/my-coordinated-events', verifyToken, async (req, res) => {
+    try {
+        const assignments = await EventCoordinator.find({ user: req.user._id })
+            .populate('event', 'title date venue');
+        res.json(assignments.map(a => a.event).filter(Boolean));
     } catch (error) {
         res.status(500).json({ message: error.message });
     }

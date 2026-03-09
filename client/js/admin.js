@@ -1,6 +1,6 @@
 // ===== Admin Dashboard JavaScript =====
 
-const API = window.location.origin + '/api';
+const API = 'https://smart-college-event-management-system.onrender.com/api';
 
 function getUser() {
     return JSON.parse(localStorage.getItem('user'));
@@ -83,6 +83,7 @@ document.addEventListener('DOMContentLoaded', function () {
         var deleteBtn = e.target.closest('[data-action="delete"]');
         var pqBtn = e.target.closest('[data-action="payment-queue"]');
         var regBtn = e.target.closest('[data-action="view-registrations"]');
+        var coordBtn = e.target.closest('[data-action="coordinators"]');
 
         if (editBtn) {
             e.preventDefault();
@@ -106,6 +107,12 @@ document.addEventListener('DOMContentLoaded', function () {
             e.preventDefault();
             e.stopPropagation();
             openRegistrationsModal(regBtn.getAttribute('data-id'), regBtn.getAttribute('data-title'));
+        }
+
+        if (coordBtn) {
+            e.preventDefault();
+            e.stopPropagation();
+            openCoordinatorModal(coordBtn.getAttribute('data-id'), coordBtn.getAttribute('data-title'));
         }
     });
 
@@ -387,6 +394,8 @@ async function loadMyEvents() {
                 '<div class="d-flex flex-wrap gap-2 mt-auto">' +
                 (!isFree ? '<button class="btn btn-sm btn-warning" data-action="payment-queue" data-id="' + ev._id + '" data-title="' + ev.title.replace(/"/g, '&amp;quot;') + '" title="Payment Queue">' +
                     '<i class="bi bi-hourglass-split me-1"></i>Payment Queue</button>' : '') +
+                '<button class="btn btn-sm btn-outline-success" data-action="coordinators" data-id="' + ev._id + '" data-title="' + ev.title.replace(/"/g, '&amp;quot;') + '" title="Assign Coordinators">' +
+                '<i class="bi bi-person-badge me-1"></i>Coordinators</button>' +
                 '<button class="btn btn-sm btn-outline-primary" data-action="edit" data-id="' + ev._id + '" title="Edit Event">' +
                 '<i class="bi bi-pencil-fill me-1"></i>Edit</button>' +
                 '<button class="btn btn-sm btn-outline-danger" data-action="delete" data-id="' + ev._id + '" title="Delete Event">' +
@@ -879,6 +888,142 @@ async function toggleCoordinator(studentId) {
         showToast('Network error.', 'error');
     }
 }
+
+// ═══════════════════════════════════════════
+// ── EVENT COORDINATORS ──
+// ═══════════════════════════════════════════
+var currentCoordEventId = null;
+
+function openCoordinatorModal(eventId, eventTitle) {
+    currentCoordEventId = eventId;
+    document.getElementById('coordinatorModalTitle').innerHTML =
+        '<i class="bi bi-person-badge me-2"></i>Coordinators — ' + (eventTitle || 'Event');
+    loadCoordinatorModal(eventId);
+    var modal = new bootstrap.Modal(document.getElementById('coordinatorModal'));
+    modal.show();
+}
+
+async function loadCoordinatorModal(eventId) {
+    try {
+        // Load current coordinators
+        var coordRes = await fetch(API + '/admin/event-coordinators/' + eventId, { headers: authHeaders() });
+        var coordinators = coordRes.ok ? await coordRes.json() : [];
+
+        // Load all branch students
+        var studRes = await fetch(API + '/admin/students', { headers: authHeaders(), cache: 'no-store' });
+        var students = studRes.ok ? await studRes.json() : [];
+
+        // Build set of coordinator IDs for quick lookup
+        var coordIds = new Set();
+        for (var c = 0; c < coordinators.length; c++) {
+            coordIds.add(coordinators[c]._id);
+        }
+
+        // Render current coordinators
+        var coordContainer = document.getElementById('currentCoordinators');
+        if (coordinators.length === 0) {
+            coordContainer.innerHTML = '<p class="text-muted small text-center py-2">No coordinators assigned yet.</p>';
+        } else {
+            var coordHtml = '<div class="d-flex flex-wrap gap-2">';
+            for (var i = 0; i < coordinators.length; i++) {
+                var co = coordinators[i];
+                coordHtml += '<div class="d-inline-flex align-items-center gap-2 px-3 py-2 rounded-pill" ' +
+                    'style="background:linear-gradient(135deg,#dcfce7,#bbf7d0);border:1px solid #86efac;">' +
+                    '<i class="bi bi-star-fill text-success"></i>' +
+                    '<strong>' + (co.name || '—') + '</strong>' +
+                    '<small class="text-muted">(' + (co.registrationNumber || '—') + ')</small>' +
+                    '<button class="btn btn-sm btn-outline-danger rounded-circle p-0" ' +
+                    'style="width:24px;height:24px;line-height:1;" ' +
+                    'onclick="removeEventCoordinator(\'' + eventId + '\', \'' + co._id + '\')" title="Remove">' +
+                    '<i class="bi bi-x"></i></button>' +
+                    '</div>';
+            }
+            coordHtml += '</div>';
+            coordContainer.innerHTML = coordHtml;
+        }
+
+        // Render available students (exclude already-assigned coordinators)
+        var availContainer = document.getElementById('availableStudentsForCoord');
+        var availStudents = students.filter(function (s) { return !coordIds.has(s._id); });
+
+        if (availStudents.length === 0) {
+            availContainer.innerHTML = '<p class="text-muted small text-center py-2">No more students available from your branch.</p>';
+        } else {
+            var tHtml = '<table class="table table-hover mb-0">' +
+                '<thead><tr>' +
+                '<th>#</th><th>Name</th><th>Reg No</th><th>Year</th><th>Section</th><th>Action</th>' +
+                '</tr></thead><tbody>';
+
+            for (var j = 0; j < availStudents.length; j++) {
+                var s = availStudents[j];
+                tHtml += '<tr>' +
+                    '<td>' + (j + 1) + '</td>' +
+                    '<td><strong>' + (s.name || '—') + '</strong></td>' +
+                    '<td><code>' + (s.registrationNumber || '—') + '</code></td>' +
+                    '<td>' + (s.year || '—') + '</td>' +
+                    '<td>' + (s.section || '—') + '</td>' +
+                    '<td><button class="btn btn-sm btn-success" ' +
+                    'onclick="assignEventCoordinator(\'' + eventId + '\', \'' + s._id + '\')">' +
+                    '<i class="bi bi-plus-lg me-1"></i>Assign</button></td>' +
+                    '</tr>';
+            }
+            tHtml += '</tbody></table>';
+            availContainer.innerHTML = tHtml;
+        }
+    } catch (err) {
+        console.error('Error loading coordinator modal:', err);
+        showToast('Error loading coordinator data.', 'error');
+    }
+}
+
+async function assignEventCoordinator(eventId, studentId) {
+    try {
+        var res = await fetch(API + '/admin/event-coordinator/' + eventId + '/' + studentId, {
+            method: 'POST',
+            headers: authHeaders()
+        });
+        var data = await res.json();
+        if (res.ok) {
+            showToast('✅ ' + data.message, 'success');
+            loadCoordinatorModal(eventId);
+        } else {
+            showToast(data.message || 'Error assigning coordinator.', 'error');
+        }
+    } catch (err) {
+        showToast('Network error.', 'error');
+    }
+}
+
+async function removeEventCoordinator(eventId, studentId) {
+    if (!confirm('Remove this coordinator?')) return;
+    try {
+        var res = await fetch(API + '/admin/event-coordinator/' + eventId + '/' + studentId, {
+            method: 'DELETE',
+            headers: authHeaders()
+        });
+        var data = await res.json();
+        if (res.ok) {
+            showToast(data.message, 'success');
+            loadCoordinatorModal(eventId);
+        } else {
+            showToast(data.message || 'Error removing coordinator.', 'error');
+        }
+    } catch (err) {
+        showToast('Network error.', 'error');
+    }
+}
+
+// Coordinator modal delegation
+document.getElementById('coordinatorModal').addEventListener('click', function (e) {
+    var assignBtn = e.target.closest('[data-action="assign-coord"]');
+    var removeBtn = e.target.closest('[data-action="remove-coord"]');
+    if (assignBtn) {
+        assignEventCoordinator(currentCoordEventId, assignBtn.getAttribute('data-id'));
+    }
+    if (removeBtn) {
+        removeEventCoordinator(currentCoordEventId, removeBtn.getAttribute('data-id'));
+    }
+});
 
 // ═══════════════════════════════════════════
 // ── TOAST ──

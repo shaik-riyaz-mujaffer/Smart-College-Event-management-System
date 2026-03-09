@@ -7,9 +7,10 @@ const path = require('path');
 const fs = require('fs');
 const Registration = require('../models/Registration');
 const Event = require('../models/Event');
-const { verifyToken, isAdmin } = require('../middleware/auth');
+const { verifyToken, isAdmin, isAdminOrCoordinator } = require('../middleware/auth');
 const { registrationLimiter, scannerLimiter, gateLimiter } = require('../middleware/rateLimiter');
 const razorpay = require('../config/razorpay');
+const EventCoordinator = require('../models/EventCoordinator');
 const { generateQrToken } = require('../utils/qrToken');
 const { sendRegistrationEmail } = require('../utils/email');
 const { generateTicketPDF } = require('../utils/pdf');
@@ -487,8 +488,9 @@ router.post('/gate-check/:token', gateLimiter, async (req, res) => {
 
 // ═══════════════════════════════════════════════════════════════
 // 6. SCANNER SCAN — authenticated endpoint for scanner dashboard
+//    Accessible by admins AND student coordinators
 // ═══════════════════════════════════════════════════════════════
-router.post('/scan', verifyToken, isAdmin, scannerLimiter, async (req, res) => {
+router.post('/scan', verifyToken, isAdminOrCoordinator, scannerLimiter, async (req, res) => {
     try {
         const { token } = req.body;
 
@@ -501,6 +503,20 @@ router.post('/scan', verifyToken, isAdmin, scannerLimiter, async (req, res) => {
                 code: 'NOT_FOUND',
                 message: 'Invalid QR code.'
             });
+        }
+
+        // If scanner is a coordinator (not admin), verify they are assigned to this event
+        if (req.user.role !== 'admin') {
+            const isAssigned = await EventCoordinator.findOne({
+                event: registration.event._id,
+                user: req.user._id
+            });
+            if (!isAssigned) {
+                return res.status(403).json({
+                    code: 'NOT_ASSIGNED',
+                    message: 'You are not a coordinator for this event.'
+                });
+            }
         }
 
         if (registration.paymentStatus === 'pending' || registration.paymentStatus === 'failed') {

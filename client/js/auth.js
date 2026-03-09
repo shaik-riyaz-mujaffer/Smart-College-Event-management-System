@@ -1,6 +1,6 @@
 // ===== Auth JavaScript (Login & Register) =====
 
-const API = window.location.origin + '/api';
+const API = 'https://smart-college-event-management-system.onrender.com/api';
 
 // Show alert
 function showAlert(box, message, type = 'danger') {

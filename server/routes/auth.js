@@ -97,6 +97,7 @@ router.post('/register', async (req, res) => {
             branch: user.branch,
             year: user.year,
             section: user.section,
+            isCoordinator: user.isCoordinator || false,
             token: generateToken(user._id)
         });
     } catch (error) {
@@ -152,6 +153,7 @@ router.post('/login', async (req, res) => {
             branch: user.branch,
             year: user.year,
             section: user.section,
+            isCoordinator: user.isCoordinator || false,
             token: generateToken(user._id)
         });
     } catch (error) {

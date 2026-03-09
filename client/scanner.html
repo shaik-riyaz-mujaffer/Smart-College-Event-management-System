@@ -200,24 +200,56 @@
         let lastScannedToken = null;
         let lastScanTime = 0;
 
-        // Auth check
+        // Auth check — allow admin OR coordinator
         const user = JSON.parse(localStorage.getItem('user'));
-        if (!user || user.role !== 'admin') {
+        if (!user || (user.role !== 'admin' && !user.isCoordinator)) {
             window.location.href = 'index.html';
         }
         document.getElementById('adminName').innerText = user.name;
 
+        // Back button — go to admin.html for admins, student.html for coordinators
+        const backBtn = document.querySelector('a[href="admin.html"]');
+        if (user.role !== 'admin' && backBtn) {
+            backBtn.href = 'student.html';
+            backBtn.textContent = 'Back to Dashboard';
+        }
+
         async function loadEvents() {
             try {
-                const res = await fetch(`${API}/events`);
-                const events = await res.json();
-                const select = document.getElementById('eventSelect');
-                events.forEach(ev => {
-                    const opt = document.createElement('option');
-                    opt.value = ev._id;
-                    opt.textContent = ev.title;
-                    select.appendChild(opt);
-                });
+                if (user.role === 'admin') {
+                    // Admin: show all events
+                    const res = await fetch(`${API}/events`);
+                    const events = await res.json();
+                    const select = document.getElementById('eventSelect');
+                    events.forEach(ev => {
+                        const opt = document.createElement('option');
+                        opt.value = ev._id;
+                        opt.textContent = ev.title;
+                        select.appendChild(opt);
+                    });
+                } else {
+                    // Coordinator: show only assigned events
+                    const res = await fetch(`${API}/admin/my-coordinated-events`, {
+                        headers: { 'Authorization': `Bearer ${user.token}` }
+                    });
+                    const events = await res.json();
+                    const select = document.getElementById('eventSelect');
+                    // Remove "All Events" option for coordinators
+                    select.innerHTML = '';
+                    if (events.length === 0) {
+                        const opt = document.createElement('option');
+                        opt.value = '';
+                        opt.textContent = '-- No events assigned --';
+                        select.appendChild(opt);
+                    } else {
+                        events.forEach(ev => {
+                            const opt = document.createElement('option');
+                            opt.value = ev._id;
+                            opt.textContent = ev.title;
+                            select.appendChild(opt);
+                        });
+                    }
+                }
             } catch (err) { console.error(err); }
         }
 
