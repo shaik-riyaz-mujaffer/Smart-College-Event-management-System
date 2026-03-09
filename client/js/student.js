@@ -1,7 +1,7 @@
 // ===== Student Dashboard JavaScript =====
 // Fixed: per-student registration state, no cross-student/cross-event pollution
 
-var API = 'https://smart-college-event-management-system.onrender.com';
+var API = 'https://smart-college-event-management-system.onrender.com/api';
 
 function getUser() {
     return JSON.parse(localStorage.getItem('user'));
