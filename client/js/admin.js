@@ -1,6 +1,6 @@
 // ===== Admin Dashboard JavaScript =====
 
-const API = 'https://smart-college-event-management-system.onrender.com/api';
+const API = 'https://smart-college-event-management-system.onrender.com';
 
 function getUser() {
     return JSON.parse(localStorage.getItem('user'));
